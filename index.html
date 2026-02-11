@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang PRO 2026</title>
+<title>Gudang PRO Fix</title>
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -12,84 +13,59 @@
 
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG PRO 2026</h1>
+<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG PRO</h1>
 
-<!-- PILIH GUDANG -->
+<select id="gudangSelect" class="border p-2 mb-4" onchange="loadBarang()">
+<option value="Gudang A">Gudang A</option>
+<option value="Gudang B">Gudang B</option>
+</select>
+
 <div class="bg-white p-4 rounded shadow mb-4">
-  <label class="font-bold">Pilih Gudang:</label>
-  <select id="gudangSelect" class="border p-2" onchange="loadBarang()">
-    <option value="Gudang A">Gudang A</option>
-    <option value="Gudang B">Gudang B</option>
-  </select>
+<input id="nama" placeholder="Nama Barang" class="border p-2 mr-2">
+<input id="stok" type="number" placeholder="Stok" class="border p-2 mr-2">
+<input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
+<button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Tambah</button>
 </div>
 
-<!-- TAMBAH BARANG -->
-<div class="bg-white p-4 rounded shadow mb-4">
-  <h2 class="font-bold mb-2">Tambah Barang</h2>
-  <input id="nama" placeholder="Nama Barang" class="border p-2 mr-2">
-  <input id="stok" type="number" placeholder="Stok Awal" class="border p-2 mr-2">
-  <input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
-  <button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Simpan</button>
-</div>
+<table class="w-full border bg-white">
+<thead>
+<tr class="bg-gray-200">
+<th class="border p-2">Nama</th>
+<th class="border p-2">Stok</th>
+<th class="border p-2">Min</th>
+<th class="border p-2">Aksi</th>
+</tr>
+</thead>
+<tbody id="tabelBarang"></tbody>
+</table>
 
-<!-- TABEL -->
-<div class="bg-white p-4 rounded shadow mb-4">
-  <h2 class="font-bold mb-2">Daftar Barang</h2>
-  <table class="w-full border">
-    <thead>
-      <tr class="bg-gray-200">
-        <th class="border p-2">Nama</th>
-        <th class="border p-2">Stok</th>
-        <th class="border p-2">Min</th>
-        <th class="border p-2">Aksi</th>
-      </tr>
-    </thead>
-    <tbody id="tabelBarang"></tbody>
-  </table>
-</div>
-
-<!-- GRAFIK -->
-<div class="bg-white p-4 rounded shadow mb-4">
-  <h2 class="font-bold mb-2">Grafik Stok</h2>
-  <canvas id="chartStok"></canvas>
-</div>
-
-<!-- RIWAYAT -->
-<div class="bg-white p-4 rounded shadow mb-4">
-  <h2 class="font-bold mb-2">Riwayat Transaksi</h2>
-  <button onclick="exportExcel()" class="bg-green-600 text-white px-3 py-2 rounded mb-2">Export Excel</button>
-  <table class="w-full border">
-    <thead>
-      <tr class="bg-gray-200">
-        <th class="border p-2">Tanggal</th>
-        <th class="border p-2">Barang</th>
-        <th class="border p-2">Tipe</th>
-        <th class="border p-2">Jumlah</th>
-      </tr>
-    </thead>
-    <tbody id="tabelRiwayat"></tbody>
-  </table>
-</div>
+<br>
+<canvas id="chartStok"></canvas>
 
 <script>
+
 var firebaseConfig = {
   apiKey: "AIzaSyAucO3yaRtvL-v9zcK_6-ThNJVt-kRF3jg",
   authDomain: "gudang-anto-2026.firebaseapp.com",
   databaseURL: "https://gudang-anto-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "gudang-anto-2026",
+  projectId: "gudang-anto-2026"
 };
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
-
 var chart;
 
 // TAMBAH BARANG
-function tambahBarang() {
+function tambahBarang(){
   var gudang = document.getElementById("gudangSelect").value;
   var nama = document.getElementById("nama").value;
   var stok = parseInt(document.getElementById("stok").value);
   var minimum = parseInt(document.getElementById("minimum").value);
+
+  if(!nama || isNaN(stok) || isNaN(minimum)){
+    alert("Isi semua data");
+    return;
+  }
 
   var id = Date.now();
 
@@ -104,11 +80,12 @@ function tambahBarang() {
   document.getElementById("minimum").value="";
 }
 
-// LOAD BARANG
+// LOAD DATA
 function loadBarang(){
   var gudang = document.getElementById("gudangSelect").value;
 
   db.ref("barang/"+gudang).on("value", function(snapshot){
+
     var data = snapshot.val();
     var tabel = document.getElementById("tabelBarang");
     tabel.innerHTML="";
@@ -116,106 +93,73 @@ function loadBarang(){
     var labels=[];
     var stokData=[];
 
+    if(!data){
+      updateChart([],[]);
+      return;
+    }
+
     for(var id in data){
-      var b = data[id];
-      var warna = b.stok <= b.minimum ? "bg-red-200":"";
 
-      tabel.innerHTML += `
-      <tr class="${warna}">
-        <td class="border p-2">${b.nama}</td>
-        <td class="border p-2">${b.stok}</td>
-        <td class="border p-2">${b.minimum}</td>
-        <td class="border p-2">
-          <button onclick="updateStok('${id}','masuk')" class="bg-green-500 text-white px-2 py-1 rounded">+</button>
-          <button onclick="updateStok('${id}','keluar')" class="bg-yellow-500 text-white px-2 py-1 rounded">-</button>
-        </td>
-      </tr>`;
+      var row = "<tr>";
 
-      labels.push(b.nama);
-      stokData.push(b.stok);
+      row += "<td class='border p-2'>"+data[id].nama+"</td>";
+      row += "<td class='border p-2'>"+data[id].stok+"</td>";
+      row += "<td class='border p-2'>"+data[id].minimum+"</td>";
+      row += "<td class='border p-2'>";
+      row += "<button onclick=\"updateStok('"+id+"','masuk')\" class='bg-green-500 text-white px-2 py-1 rounded mr-1'>+</button>";
+      row += "<button onclick=\"updateStok('"+id+"','keluar')\" class='bg-yellow-500 text-white px-2 py-1 rounded'>-</button>";
+      row += "</td></tr>";
+
+      tabel.innerHTML += row;
+
+      labels.push(data[id].nama);
+      stokData.push(data[id].stok);
     }
 
     updateChart(labels,stokData);
   });
-
-  loadRiwayat();
 }
 
-// UPDATE STOK + SIMPAN RIWAYAT
+// UPDATE STOK
 function updateStok(id,tipe){
   var gudang = document.getElementById("gudangSelect").value;
   var jumlah = parseInt(prompt("Jumlah?"));
-  if(!jumlah) return;
+  if(isNaN(jumlah)) return;
 
   var ref = db.ref("barang/"+gudang+"/"+id);
 
   ref.once("value").then(function(snap){
     var barang = snap.val();
-    var stokBaru = tipe=="masuk" ? barang.stok+jumlah : barang.stok-jumlah;
+    var stokBaru;
+
+    if(tipe=="masuk"){
+      stokBaru = barang.stok + jumlah;
+    }else{
+      stokBaru = barang.stok - jumlah;
+    }
 
     ref.update({stok:stokBaru});
-
-    db.ref("riwayat").push({
-      tanggal:new Date().toLocaleString(),
-      barang:barang.nama,
-      tipe:tipe,
-      jumlah:jumlah,
-      gudang:gudang
-    });
   });
 }
 
 // GRAFIK
 function updateChart(labels,data){
   if(chart) chart.destroy();
+
   chart = new Chart(document.getElementById("chartStok"),{
     type:"bar",
     data:{
       labels:labels,
-      datasets:[{label:"Stok",data:data}]
+      datasets:[{
+        label:"Stok",
+        data:data
+      }]
     }
-  });
-}
-
-// LOAD RIWAYAT
-function loadRiwayat(){
-  db.ref("riwayat").limitToLast(50).on("value",function(snapshot){
-    var data = snapshot.val();
-    var tabel = document.getElementById("tabelRiwayat");
-    tabel.innerHTML="";
-    for(var id in data){
-      var r = data[id];
-      tabel.innerHTML += `
-      <tr>
-        <td class="border p-2">${r.tanggal}</td>
-        <td class="border p-2">${r.barang}</td>
-        <td class="border p-2">${r.tipe}</td>
-        <td class="border p-2">${r.jumlah}</td>
-      </tr>`;
-    }
-  });
-}
-
-// EXPORT EXCEL (CSV)
-function exportExcel(){
-  db.ref("riwayat").once("value").then(function(snapshot){
-    var data = snapshot.val();
-    var csv="Tanggal,Barang,Tipe,Jumlah,Gudang\n";
-    for(var id in data){
-      var r=data[id];
-      csv+=${r.tanggal},${r.barang},${r.tipe},${r.jumlah},${r.gudang}\n;
-    }
-
-    var blob=new Blob([csv],{type:"text/csv"});
-    var a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download="riwayat_gudang.csv";
-    a.click();
   });
 }
 
 loadBarang();
-</script>
 
+</script>
 </body>
 </html>
