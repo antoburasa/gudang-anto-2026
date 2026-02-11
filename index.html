@@ -2,34 +2,45 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang Realtime</title>
+<title>Sistem Gudang PRO 2026</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG - REALTIME</h1>
+<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG PRO 2026</h1>
 
+<!-- PILIH GUDANG -->
+<div class="bg-white p-4 rounded shadow mb-4">
+  <label class="font-bold">Pilih Gudang:</label>
+  <select id="gudangSelect" class="border p-2" onchange="loadBarang()">
+    <option value="Gudang A">Gudang A</option>
+    <option value="Gudang B">Gudang B</option>
+  </select>
+</div>
+
+<!-- TAMBAH BARANG -->
 <div class="bg-white p-4 rounded shadow mb-4">
   <h2 class="font-bold mb-2">Tambah Barang</h2>
   <input id="nama" placeholder="Nama Barang" class="border p-2 mr-2">
   <input id="stok" type="number" placeholder="Stok Awal" class="border p-2 mr-2">
-  <input id="minimum" type="number" placeholder="Minimum Stok" class="border p-2 mr-2">
+  <input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
   <button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Simpan</button>
 </div>
 
-<div class="bg-white p-4 rounded shadow">
+<!-- TABEL -->
+<div class="bg-white p-4 rounded shadow mb-4">
   <h2 class="font-bold mb-2">Daftar Barang</h2>
   <table class="w-full border">
     <thead>
       <tr class="bg-gray-200">
         <th class="border p-2">Nama</th>
         <th class="border p-2">Stok</th>
-        <th class="border p-2">Minimum</th>
+        <th class="border p-2">Min</th>
         <th class="border p-2">Aksi</th>
       </tr>
     </thead>
@@ -37,96 +48,173 @@
   </table>
 </div>
 
+<!-- GRAFIK -->
+<div class="bg-white p-4 rounded shadow mb-4">
+  <h2 class="font-bold mb-2">Grafik Stok</h2>
+  <canvas id="chartStok"></canvas>
+</div>
+
+<!-- RIWAYAT -->
+<div class="bg-white p-4 rounded shadow mb-4">
+  <h2 class="font-bold mb-2">Riwayat Transaksi</h2>
+  <button onclick="exportExcel()" class="bg-green-600 text-white px-3 py-2 rounded mb-2">Export Excel</button>
+  <table class="w-full border">
+    <thead>
+      <tr class="bg-gray-200">
+        <th class="border p-2">Tanggal</th>
+        <th class="border p-2">Barang</th>
+        <th class="border p-2">Tipe</th>
+        <th class="border p-2">Jumlah</th>
+      </tr>
+    </thead>
+    <tbody id="tabelRiwayat"></tbody>
+  </table>
+</div>
+
 <script>
-// CONFIG FIREBASE ANDA
 var firebaseConfig = {
   apiKey: "AIzaSyAucO3yaRtvL-v9zcK_6-ThNJVt-kRF3jg",
   authDomain: "gudang-anto-2026.firebaseapp.com",
   databaseURL: "https://gudang-anto-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "gudang-anto-2026",
-  storageBucket: "gudang-anto-2026.firebasestorage.app",
-  messagingSenderId: "711961129196",
-  appId: "1:711961129196:web:2ed2e74539e112dfff5c9"
 };
 
 firebase.initializeApp(firebaseConfig);
-var database = firebase.database();
+var db = firebase.database();
+
+var chart;
 
 // TAMBAH BARANG
 function tambahBarang() {
+  var gudang = document.getElementById("gudangSelect").value;
   var nama = document.getElementById("nama").value;
   var stok = parseInt(document.getElementById("stok").value);
   var minimum = parseInt(document.getElementById("minimum").value);
 
-  if (!nama || isNaN(stok) || isNaN(minimum)) {
-    alert("Isi semua data!");
-    return;
-  }
-
   var id = Date.now();
 
-  database.ref("barang/" + id).set({
-    nama: nama,
-    stok: stok,
-    minimum: minimum
+  db.ref("barang/"+gudang+"/"+id).set({
+    nama:nama,
+    stok:stok,
+    minimum:minimum
   });
 
-  document.getElementById("nama").value = "";
-  document.getElementById("stok").value = "";
-  document.getElementById("minimum").value = "";
+  document.getElementById("nama").value="";
+  document.getElementById("stok").value="";
+  document.getElementById("minimum").value="";
 }
 
-// TAMPILKAN DATA REALTIME
-database.ref("barang").on("value", function(snapshot) {
-  var data = snapshot.val();
-  var tabel = document.getElementById("tabelBarang");
-  tabel.innerHTML = "";
+// LOAD BARANG
+function loadBarang(){
+  var gudang = document.getElementById("gudangSelect").value;
 
-  for (var id in data) {
-    var barang = data[id];
-    var warna = barang.stok <= barang.minimum ? "bg-red-200" : "";
+  db.ref("barang/"+gudang).on("value", function(snapshot){
+    var data = snapshot.val();
+    var tabel = document.getElementById("tabelBarang");
+    tabel.innerHTML="";
 
-    tabel.innerHTML += `
+    var labels=[];
+    var stokData=[];
+
+    for(var id in data){
+      var b = data[id];
+      var warna = b.stok <= b.minimum ? "bg-red-200":"";
+
+      tabel.innerHTML += `
       <tr class="${warna}">
-        <td class="border p-2">${barang.nama}</td>
-        <td class="border p-2">${barang.stok}</td>
-        <td class="border p-2">${barang.minimum}</td>
+        <td class="border p-2">${b.nama}</td>
+        <td class="border p-2">${b.stok}</td>
+        <td class="border p-2">${b.minimum}</td>
         <td class="border p-2">
-          <button onclick="tambahStok('${id}')" class="bg-green-500 text-white px-2 py-1 rounded">+ Stok</button>
-          <button onclick="kurangStok('${id}')" class="bg-yellow-500 text-white px-2 py-1 rounded">- Stok</button>
-          <button onclick="hapusBarang('${id}')" class="bg-red-500 text-white px-2 py-1 rounded">Hapus</button>
+          <button onclick="updateStok('${id}','masuk')" class="bg-green-500 text-white px-2 py-1 rounded">+</button>
+          <button onclick="updateStok('${id}','keluar')" class="bg-yellow-500 text-white px-2 py-1 rounded">-</button>
         </td>
-      </tr>
-    `;
-  }
-});
+      </tr>`;
 
-// TAMBAH STOK
-function tambahStok(id) {
-  var jumlah = prompt("Tambah berapa?");
-  if (!jumlah) return;
+      labels.push(b.nama);
+      stokData.push(b.stok);
+    }
 
-  database.ref("barang/" + id + "/stok").transaction(function(stok) {
-    return (stok || 0) + parseInt(jumlah);
+    updateChart(labels,stokData);
+  });
+
+  loadRiwayat();
+}
+
+// UPDATE STOK + SIMPAN RIWAYAT
+function updateStok(id,tipe){
+  var gudang = document.getElementById("gudangSelect").value;
+  var jumlah = parseInt(prompt("Jumlah?"));
+  if(!jumlah) return;
+
+  var ref = db.ref("barang/"+gudang+"/"+id);
+
+  ref.once("value").then(function(snap){
+    var barang = snap.val();
+    var stokBaru = tipe=="masuk" ? barang.stok+jumlah : barang.stok-jumlah;
+
+    ref.update({stok:stokBaru});
+
+    db.ref("riwayat").push({
+      tanggal:new Date().toLocaleString(),
+      barang:barang.nama,
+      tipe:tipe,
+      jumlah:jumlah,
+      gudang:gudang
+    });
   });
 }
 
-// KURANG STOK
-function kurangStok(id) {
-  var jumlah = prompt("Kurang berapa?");
-  if (!jumlah) return;
-
-  database.ref("barang/" + id + "/stok").transaction(function(stok) {
-    return (stok || 0) - parseInt(jumlah);
+// GRAFIK
+function updateChart(labels,data){
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById("chartStok"),{
+    type:"bar",
+    data:{
+      labels:labels,
+      datasets:[{label:"Stok",data:data}]
+    }
   });
 }
 
-// HAPUS
-function hapusBarang(id) {
-  if (confirm("Yakin hapus barang?")) {
-    database.ref("barang/" + id).remove();
-  }
+// LOAD RIWAYAT
+function loadRiwayat(){
+  db.ref("riwayat").limitToLast(50).on("value",function(snapshot){
+    var data = snapshot.val();
+    var tabel = document.getElementById("tabelRiwayat");
+    tabel.innerHTML="";
+    for(var id in data){
+      var r = data[id];
+      tabel.innerHTML += `
+      <tr>
+        <td class="border p-2">${r.tanggal}</td>
+        <td class="border p-2">${r.barang}</td>
+        <td class="border p-2">${r.tipe}</td>
+        <td class="border p-2">${r.jumlah}</td>
+      </tr>`;
+    }
+  });
 }
+
+// EXPORT EXCEL (CSV)
+function exportExcel(){
+  db.ref("riwayat").once("value").then(function(snapshot){
+    var data = snapshot.val();
+    var csv="Tanggal,Barang,Tipe,Jumlah,Gudang\n";
+    for(var id in data){
+      var r=data[id];
+      csv+=${r.tanggal},${r.barang},${r.tipe},${r.jumlah},${r.gudang}\n;
+    }
+
+    var blob=new Blob([csv],{type:"text/csv"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="riwayat_gudang.csv";
+    a.click();
+  });
+}
+
+loadBarang();
 </script>
 
 </body>
