@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gudang PRO Fix</title>
+<title>Sistem Gudang Final PRO</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,11 +13,15 @@
 
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG PRO</h1>
+<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG FINAL PRO</h1>
 
 <select id="gudangSelect" class="border p-2 mb-4" onchange="loadBarang()">
-<option value="Gudang A">Gudang A</option>
-<option value="Gudang B">Gudang B</option>
+<option>Gudang Ingredients</option>
+<option>Gudang Label</option>
+<option>Gudang ATK</option>
+<option>General Store A</option>
+<option>General Store B</option>
+<option>Gudang Tambak</option>
 </select>
 
 <div class="bg-white p-4 rounded shadow mb-4">
@@ -25,9 +29,11 @@
 <input id="stok" type="number" placeholder="Stok" class="border p-2 mr-2">
 <input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
 <button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Tambah</button>
+<button onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2 rounded ml-2">Export Excel</button>
 </div>
 
-<table class="w-full border bg-white">
+<h2 class="font-bold mt-4">Data Barang</h2>
+<table class="w-full border bg-white mb-6">
 <thead>
 <tr class="bg-gray-200">
 <th class="border p-2">Nama</th>
@@ -39,16 +45,30 @@
 <tbody id="tabelBarang"></tbody>
 </table>
 
-<br>
-<canvas id="chartStok"></canvas>
+<h2 class="font-bold">Grafik Stok</h2>
+<canvas id="chartStok" class="mb-6"></canvas>
+
+<h2 class="font-bold">Riwayat Transaksi</h2>
+<table class="w-full border bg-white">
+<thead>
+<tr class="bg-gray-200">
+<th class="border p-2">Tanggal</th>
+<th class="border p-2">Gudang</th>
+<th class="border p-2">Barang</th>
+<th class="border p-2">Tipe</th>
+<th class="border p-2">Jumlah</th>
+</tr>
+</thead>
+<tbody id="tabelRiwayat"></tbody>
+</table>
 
 <script>
 
 var firebaseConfig = {
-  apiKey: "AIzaSyAucO3yaRtvL-v9zcK_6-ThNJVt-kRF3jg",
-  authDomain: "gudang-anto-2026.firebaseapp.com",
-  databaseURL: "https://gudang-anto-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "gudang-anto-2026"
+  apiKey: "ISI_APIKEY_ANDA",
+  authDomain: "ISI_AUTHDOMAIN_ANDA",
+  databaseURL: "ISI_DATABASEURL_ANDA",
+  projectId: "ISI_PROJECTID_ANDA"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -57,12 +77,12 @@ var chart;
 
 // TAMBAH BARANG
 function tambahBarang(){
-  var gudang = document.getElementById("gudangSelect").value;
-  var nama = document.getElementById("nama").value;
-  var stok = parseInt(document.getElementById("stok").value);
-  var minimum = parseInt(document.getElementById("minimum").value);
+  var gudang = gudangSelect.value;
+  var nama = nama.value;
+  var stokAwal = parseInt(stok.value);
+  var minimumVal = parseInt(minimum.value);
 
-  if(!nama || isNaN(stok) || isNaN(minimum)){
+  if(!nama || isNaN(stokAwal) || isNaN(minimumVal)){
     alert("Isi semua data");
     return;
   }
@@ -71,24 +91,20 @@ function tambahBarang(){
 
   db.ref("barang/"+gudang+"/"+id).set({
     nama:nama,
-    stok:stok,
-    minimum:minimum
+    stok:stokAwal,
+    minimum:minimumVal
   });
 
-  document.getElementById("nama").value="";
-  document.getElementById("stok").value="";
-  document.getElementById("minimum").value="";
+  nama.value=""; stok.value=""; minimum.value="";
 }
 
-// LOAD DATA
+// LOAD BARANG
 function loadBarang(){
-  var gudang = document.getElementById("gudangSelect").value;
+  var gudang = gudangSelect.value;
 
   db.ref("barang/"+gudang).on("value", function(snapshot){
-
     var data = snapshot.val();
-    var tabel = document.getElementById("tabelBarang");
-    tabel.innerHTML="";
+    tabelBarang.innerHTML="";
 
     var labels=[];
     var stokData=[];
@@ -100,29 +116,33 @@ function loadBarang(){
 
     for(var id in data){
 
-      var row = "<tr>";
+      var b = data[id];
+      var warna = b.stok <= b.minimum ? "bg-red-200" : "";
 
-      row += "<td class='border p-2'>"+data[id].nama+"</td>";
-      row += "<td class='border p-2'>"+data[id].stok+"</td>";
-      row += "<td class='border p-2'>"+data[id].minimum+"</td>";
-      row += "<td class='border p-2'>";
-      row += "<button onclick=\"updateStok('"+id+"','masuk')\" class='bg-green-500 text-white px-2 py-1 rounded mr-1'>+</button>";
-      row += "<button onclick=\"updateStok('"+id+"','keluar')\" class='bg-yellow-500 text-white px-2 py-1 rounded'>-</button>";
-      row += "</td></tr>";
+      var row="<tr class='"+warna+"'>";
+      row+="<td class='border p-2'>"+b.nama+"</td>";
+      row+="<td class='border p-2'>"+b.stok+"</td>";
+      row+="<td class='border p-2'>"+b.minimum+"</td>";
+      row+="<td class='border p-2'>";
+      row+="<button onclick=\"updateStok('"+id+"','masuk')\" class='bg-green-500 text-white px-2 py-1 mr-1 rounded'>+</button>";
+      row+="<button onclick=\"updateStok('"+id+"','keluar')\" class='bg-yellow-500 text-white px-2 py-1 rounded'>-</button>";
+      row+="</td></tr>";
 
-      tabel.innerHTML += row;
+      tabelBarang.innerHTML+=row;
 
-      labels.push(data[id].nama);
-      stokData.push(data[id].stok);
+      labels.push(b.nama);
+      stokData.push(b.stok);
     }
 
     updateChart(labels,stokData);
   });
+
+  loadRiwayat();
 }
 
-// UPDATE STOK
+// UPDATE STOK + SIMPAN RIWAYAT
 function updateStok(id,tipe){
-  var gudang = document.getElementById("gudangSelect").value;
+  var gudang = gudangSelect.value;
   var jumlah = parseInt(prompt("Jumlah?"));
   if(isNaN(jumlah)) return;
 
@@ -130,32 +150,70 @@ function updateStok(id,tipe){
 
   ref.once("value").then(function(snap){
     var barang = snap.val();
-    var stokBaru;
-
-    if(tipe=="masuk"){
-      stokBaru = barang.stok + jumlah;
-    }else{
-      stokBaru = barang.stok - jumlah;
-    }
+    var stokBaru = tipe=="masuk" ? barang.stok+jumlah : barang.stok-jumlah;
 
     ref.update({stok:stokBaru});
+
+    db.ref("riwayat").push({
+      tanggal:new Date().toLocaleString(),
+      gudang:gudang,
+      barang:barang.nama,
+      tipe:tipe,
+      jumlah:jumlah
+    });
+  });
+}
+
+// LOAD RIWAYAT
+function loadRiwayat(){
+  db.ref("riwayat").limitToLast(50).on("value", function(snapshot){
+    tabelRiwayat.innerHTML="";
+    var data = snapshot.val();
+    if(!data) return;
+
+    for(var id in data){
+      var r=data[id];
+      var row="<tr>";
+      row+="<td class='border p-2'>"+r.tanggal+"</td>";
+      row+="<td class='border p-2'>"+r.gudang+"</td>";
+      row+="<td class='border p-2'>"+r.barang+"</td>";
+      row+="<td class='border p-2'>"+r.tipe+"</td>";
+      row+="<td class='border p-2'>"+r.jumlah+"</td>";
+      row+="</tr>";
+      tabelRiwayat.innerHTML+=row;
+    }
   });
 }
 
 // GRAFIK
 function updateChart(labels,data){
   if(chart) chart.destroy();
-
-  chart = new Chart(document.getElementById("chartStok"),{
+  chart = new Chart(chartStok,{
     type:"bar",
     data:{
       labels:labels,
-      datasets:[{
-        label:"Stok",
-        data:data
-      }]
+      datasets:[{label:"Stok",data:data}]
     }
   });
+}
+
+// EXPORT CSV
+function exportExcel(){
+  var rows = document.querySelectorAll("#tabelBarang tr");
+  var csv="Nama,Stok,Minimum\n";
+
+  rows.forEach(function(row){
+    var cols=row.querySelectorAll("td");
+    if(cols.length>0){
+      csv+=cols[0].innerText+","+cols[1].innerText+","+cols[2].innerText+"\n";
+    }
+  });
+
+  var blob=new Blob([csv],{type:"text/csv"});
+  var link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download="data_gudang.csv";
+  link.click();
 }
 
 loadBarang();
