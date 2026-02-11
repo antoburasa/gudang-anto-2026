@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang Final Stabil</title>
+<title>Sistem Gudang Final PRO</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,7 +13,7 @@
 
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG FINAL</h1>
+<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG FINAL PRO</h1>
 
 <select id="gudangSelect" class="border p-2 mb-4" onchange="loadBarang()">
 <option>Gudang Ingredients</option>
@@ -157,7 +157,6 @@ function loadBarang(){
     updateChart(labels,stokData);
   });
 
-  loadRiwayat();
 }
 
 /* UPDATE STOK + SIMPAN RIWAYAT */
@@ -194,32 +193,27 @@ function updateStok(id,tipe){
   });
 }
 
-/* LOAD RIWAYAT */
+/* LOAD RIWAYAT REALTIME */
 function loadRiwayat(){
 
   var tabel = document.getElementById("tabelRiwayat");
 
-  db.ref("riwayat").limitToLast(50).on("value", function(snapshot){
+  db.ref("riwayat").limitToLast(100).on("child_added", function(snapshot){
 
-    tabel.innerHTML="";
-    var data = snapshot.val();
-    if(!data) return;
+    var r = snapshot.val();
+    if(!r) return;
 
-    for(var id in data){
+    var row = "<tr>";
+    row += "<td class='border p-2'>"+r.tanggal+"</td>";
+    row += "<td class='border p-2'>"+r.gudang+"</td>";
+    row += "<td class='border p-2'>"+r.barang+"</td>";
+    row += "<td class='border p-2'>"+r.tipe+"</td>";
+    row += "<td class='border p-2'>"+r.jumlah+"</td>";
+    row += "</tr>";
 
-      var r = data[id];
-      var row = "<tr>";
-      row += "<td class='border p-2'>"+r.tanggal+"</td>";
-      row += "<td class='border p-2'>"+r.gudang+"</td>";
-      row += "<td class='border p-2'>"+r.barang+"</td>";
-      row += "<td class='border p-2'>"+r.tipe+"</td>";
-      row += "<td class='border p-2'>"+r.jumlah+"</td>";
-      row += "</tr>";
-
-      tabel.innerHTML += row;
-    }
-
+    tabel.innerHTML = row + tabel.innerHTML;
   });
+
 }
 
 /* UPDATE CHART */
@@ -265,7 +259,9 @@ function exportExcel(){
   link.click();
 }
 
+/* LOAD AWAL */
 loadBarang();
+loadRiwayat();
 
 </script>
 </body>
