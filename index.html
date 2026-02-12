@@ -6,6 +6,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
 body{font-family:Arial;padding:20px;background:#f4f6f9}
@@ -34,7 +35,6 @@ th{background:#34495e;color:white}
 
 <div class="box">
 <h3>Barang Masuk</h3>
-
 <input list="barangList" id="kodeMasuk" placeholder="Ketik / Pilih Kode">
 <datalist id="barangList"></datalist>
 
@@ -53,7 +53,6 @@ th{background:#34495e;color:white}
 
 <div class="box">
 <h3>Barang Keluar</h3>
-
 <input list="barangList" id="kodeKeluar" placeholder="Ketik / Pilih Kode">
 
 <select id="gudangKeluar">
@@ -87,6 +86,29 @@ th{background:#34495e;color:white}
 
 <div class="box">
 <h3>Riwayat</h3>
+
+<input id="filterTanggal" placeholder="YYYY-MM-DD">
+<select id="filterGudang">
+<option value="">Semua Gudang</option>
+<option>Ingredients</option>
+<option>Label</option>
+<option>ATK</option>
+<option>General Store A</option>
+<option>General Store B</option>
+<option>Tambak</option>
+</select>
+
+<input id="filterKode" placeholder="Kode Barang">
+
+<select id="filterTipe">
+<option value="">Semua</option>
+<option>Masuk</option>
+<option>Keluar</option>
+</select>
+
+<button onclick="applyFilter()">Filter</button>
+<button onclick="exportExcel()">Export Excel</button>
+
 <table>
 <thead>
 <tr>
@@ -103,7 +125,7 @@ th{background:#34495e;color:white}
 
 <script>
 
-// FIREBASE CONFIG
+// ================= FIREBASE CONFIG =================
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -131,7 +153,6 @@ document.getElementById("nama").value="";
 document.getElementById("min").value="";
 }
 
-// LOAD DATALIST
 db.ref("barang").on("value",function(snapshot){
 var html="";
 snapshot.forEach(function(child){
@@ -155,7 +176,7 @@ var lama=s.val()||0;
 ref.set(lama+q);
 
 db.ref("riwayat").push({
-tanggal:new Date().toLocaleString(),
+tanggal:new Date().toISOString(),
 tipe:"Masuk",
 gudang:g,
 kode:k,
@@ -187,7 +208,7 @@ return;
 ref.set(lama-q);
 
 db.ref("riwayat").push({
-tanggal:new Date().toLocaleString(),
+tanggal:new Date().toISOString(),
 tipe:"Keluar",
 gudang:g,
 kode:k,
@@ -198,7 +219,7 @@ qty:q
 document.getElementById("qtyKeluar").value="";
 }
 
-// ================= TAMPIL STOK =================
+// ================= STOK =================
 db.ref("stok").on("value",function(snapshot){
 
 var html="";
@@ -244,17 +265,22 @@ document.getElementById("stokTable").innerHTML=html;
 });
 
 // ================= RIWAYAT =================
-db.ref("riwayat").limitToLast(100).on("value",function(snapshot){
+var semuaRiwayat=[];
 
-var html="";
-var data=[];
+db.ref("riwayat").on("value",function(snapshot){
 
+semuaRiwayat=[];
 snapshot.forEach(function(child){
-data.push(child.val());
+semuaRiwayat.push(child.val());
 });
 
-data.reverse();
+semuaRiwayat.reverse();
+tampilkanRiwayat(semuaRiwayat);
 
+});
+
+function tampilkanRiwayat(data){
+var html="";
 for(var i=0;i<data.length;i++){
 html+="<tr>";
 html+="<td>"+data[i].tanggal+"</td>";
@@ -264,10 +290,39 @@ html+="<td>"+data[i].kode+"</td>";
 html+="<td>"+data[i].qty+"</td>";
 html+="</tr>";
 }
-
 document.getElementById("riwayatTable").innerHTML=html;
+}
 
-});
+function applyFilter(){
+
+var t=document.getElementById("filterTanggal").value;
+var g=document.getElementById("filterGudang").value;
+var k=document.getElementById("filterKode").value.toLowerCase();
+var tp=document.getElementById("filterTipe").value;
+
+var hasil=[];
+
+for(var i=0;i<semuaRiwayat.length;i++){
+
+var item=semuaRiwayat[i];
+
+if(t && item.tanggal.indexOf(t)===-1) continue;
+if(g && item.gudang!=g) continue;
+if(k && item.kode.toLowerCase().indexOf(k)===-1) continue;
+if(tp && item.tipe!=tp) continue;
+
+hasil.push(item);
+}
+
+tampilkanRiwayat(hasil);
+
+}
+
+function exportExcel(){
+var table=document.getElementById("riwayatTable");
+var wb=XLSX.utils.table_to_book(table,{sheet:"Riwayat"});
+XLSX.writeFile(wb,"Riwayat_Gudang.xlsx");
+}
 
 </script>
 
