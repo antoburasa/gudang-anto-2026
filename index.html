@@ -2,26 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang 2.0 Ultimate PRO PLUS PDF & Dashboard</title>
-
-<!-- Tailwind CSS -->
+<title>Ultimate PRO PLUS 2.0 - Gudang</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- jsPDF untuk export PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
 </head>
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG 2.0 ULTIMATE PRO PLUS PDF & DASHBOARD</h1>
+<h1 class="text-2xl font-bold mb-4">ULTIMATE PRO PLUS 2.0 - SISTEM GUDANG</h1>
 
 <!-- LOGIN -->
 <div id="loginDiv" class="bg-white p-4 rounded shadow mb-4">
@@ -33,11 +24,31 @@
 <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
 </div>
 
-<!-- MAIN INTERFACE -->
+<!-- MAIN -->
 <div id="mainDiv" style="display:none">
 
-<!-- Pilih Gudang -->
-<select id="gudangSelect" class="border p-2 mb-4" onchange="loadBarang()">
+<!-- DASHBOARD STOK -->
+<div id="dashboardDiv" class="bg-white p-4 rounded shadow mb-4">
+<h2 class="font-bold mb-2">Dashboard Stok</h2>
+<canvas id="stokChart" height="100"></canvas>
+</div>
+
+<!-- FORM BARANG MASUK -->
+<div id="formMasukDiv" class="bg-white p-4 rounded shadow mb-4">
+<h2 class="font-bold mb-2">Input Barang Masuk</h2>
+<input id="kodeMasuk" placeholder="Kode Barang" class="border p-2 mr-2 mb-2">
+<input id="noPRSMasuk" placeholder="No PRS" class="border p-2 mr-2 mb-2">
+<input id="noRRMasuk" placeholder="No RR" class="border p-2 mr-2 mb-2">
+<input id="supplierMasuk" placeholder="Supplier" class="border p-2 mr-2 mb-2">
+<input id="itemMasuk" placeholder="Item" class="border p-2 mr-2 mb-2">
+<select id="unitMasuk" class="border p-2 mr-2 mb-2">
+<option>kg</option><option>meter</option><option>roll</option><option>ball</option><option>dos</option>
+<option>box</option><option>pcs</option><option>M3</option><option>liter</option><option>ton</option>
+<option>tins</option><option>drum</option><option>sheet</option><option>ujung</option>
+</select>
+<input id="qtyMasuk" type="number" placeholder="Qty" class="border p-2 mr-2 mb-2">
+<input id="departemenMasuk" placeholder="Departemen" class="border p-2 mr-2 mb-2">
+<select id="gudangMasukSelect" class="border p-2 mb-2">
 <option value="ingredients">Gudang Ingredients</option>
 <option value="label">Gudang Label</option>
 <option value="atk">Gudang ATK</option>
@@ -45,63 +56,79 @@
 <option value="general_store_b">General Store B</option>
 <option value="tambak">Gudang Tambak</option>
 </select>
-
-<!-- Input Barang (admin only) -->
-<div id="adminControls" class="bg-white p-4 rounded shadow mb-4">
-<input id="kode" placeholder="Kode Barang" class="border p-2 mr-2">
-<input id="nama" placeholder="Nama Barang" class="border p-2 mr-2">
-<input id="stok" type="number" placeholder="Stok" class="border p-2 mr-2">
-<input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
-
-<button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Tambah</button>
-<button onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2 rounded ml-2">Export Excel</button>
-<button onclick="exportPDF()" class="bg-red-600 text-white px-4 py-2 rounded ml-2">Export PDF</button>
-<button onclick="backupData()" class="bg-yellow-500 text-white px-4 py-2 rounded ml-2">Backup JSON</button>
+<label class="mr-2"><input type="checkbox" id="masukStok" checked> Masuk Stok</label>
+<br><br>
+<button onclick="tambahBarangMasuk()" class="bg-green-500 text-white px-4 py-2 rounded">Tambah Barang Masuk</button>
+<button onclick="exportExcel('masuk')" class="bg-blue-600 text-white px-4 py-2 rounded ml-2">Export Excel</button>
+<button onclick="exportPDF('masuk')" class="bg-red-600 text-white px-4 py-2 rounded ml-2">Export PDF</button>
 </div>
 
-<!-- Tabel Barang -->
-<h2 class="font-bold mt-4">Data Barang</h2>
-<table class="w-full border bg-white mb-6">
-<thead>
-<tr class="bg-gray-200">
-<th class="border p-2">Kode</th>
-<th class="border p-2">Nama</th>
-<th class="border p-2">Stok</th>
-<th class="border p-2">Minimum</th>
-<th class="border p-2">Aksi</th>
-</tr>
-</thead>
-<tbody id="tabelBarang"></tbody>
-</table>
+<!-- FORM BARANG KELUAR -->
+<div id="formKeluarDiv" class="bg-white p-4 rounded shadow mb-4">
+<h2 class="font-bold mb-2">Input Barang Keluar</h2>
+<input id="kodeKeluar" placeholder="Kode Barang" class="border p-2 mr-2 mb-2">
+<input id="itemKeluar" placeholder="Item" class="border p-2 mr-2 mb-2">
+<select id="unitKeluar" class="border p-2 mr-2 mb-2">
+<option>kg</option><option>meter</option><option>roll</option><option>ball</option><option>dos</option>
+<option>box</option><option>pcs</option><option>M3</option><option>liter</option><option>ton</option>
+<option>tins</option><option>drum</option><option>sheet</option><option>ujung</option>
+</select>
+<input id="qtyKeluar" type="number" placeholder="Qty" class="border p-2 mr-2 mb-2">
+<select id="gudangKeluarSelect" class="border p-2 mb-2">
+<option value="ingredients">Gudang Ingredients</option>
+<option value="label">Gudang Label</option>
+<option value="atk">Gudang ATK</option>
+<option value="general_store_a">General Store A</option>
+<option value="general_store_b">General Store B</option>
+<option value="tambak">Gudang Tambak</option>
+</select>
+<input id="departemenKeluar" placeholder="Departemen" class="border p-2 mr-2 mb-2">
+<button onclick="tambahBarangKeluar()" class="bg-orange-500 text-white px-4 py-2 rounded">Tambah Barang Keluar</button>
+<button onclick="exportExcel('keluar')" class="bg-blue-600 text-white px-4 py-2 rounded ml-2">Export Excel</button>
+<button onclick="exportPDF('keluar')" class="bg-red-600 text-white px-4 py-2 rounded ml-2">Export PDF</button>
+</div>
 
-<!-- Dashboard Grafik Stok -->
-<h2 class="font-bold">Grafik Stok Per Gudang</h2>
-<canvas id="chartStok" class="mb-6"></canvas>
+<!-- FILTER RIWAYAT -->
+<div id="filterDiv" class="bg-white p-4 rounded shadow mb-4">
+<h2 class="font-bold mb-2">Filter Riwayat</h2>
+<input type="date" id="filterTanggalAwal" class="border p-2 mr-2 mb-2">
+<input type="date" id="filterTanggalAkhir" class="border p-2 mr-2 mb-2">
+<input type="text" id="filterGudang" placeholder="Gudang" class="border p-2 mr-2 mb-2">
+<input type="text" id="filterKode" placeholder="Kode" class="border p-2 mr-2 mb-2">
+<input type="text" id="filterItem" placeholder="Item" class="border p-2 mr-2 mb-2">
+<input type="text" id="filterSupplier" placeholder="Supplier" class="border p-2 mr-2 mb-2">
+<input type="text" id="filterDepartemen" placeholder="Departemen" class="border p-2 mr-2 mb-2">
+<select id="filterTipe" class="border p-2 mr-2 mb-2">
+<option value="">Semua</option>
+<option value="masuk">Masuk</option>
+<option value="keluar">Keluar</option>
+</select>
+<button onclick="loadRiwayat()" class="bg-yellow-500 text-white px-4 py-2 rounded">Filter</button>
+</div>
 
-<!-- Dashboard Harian & Bulanan -->
-<h2 class="font-bold">Dashboard Harian & Bulanan</h2>
-<canvas id="chartHarian" class="mb-6"></canvas>
-<canvas id="chartBulanan" class="mb-6"></canvas>
-
-<!-- Riwayat Transaksi -->
-<h2 class="font-bold">Riwayat Transaksi</h2>
+<!-- TABEL RIWAYAT -->
 <table class="w-full border bg-white mb-6">
 <thead>
 <tr class="bg-gray-200">
 <th class="border p-2">Tanggal</th>
 <th class="border p-2">Gudang</th>
 <th class="border p-2">Kode</th>
-<th class="border p-2">Nama</th>
+<th class="border p-2">Item</th>
+<th class="border p-2">Unit</th>
+<th class="border p-2">Qty</th>
+<th class="border p-2">Supplier</th>
+<th class="border p-2">Departemen</th>
+<th class="border p-2">Masuk Stok</th>
 <th class="border p-2">Tipe</th>
-<th class="border p-2">Jumlah</th>
 <th class="border p-2">User</th>
+<th class="border p-2">Aksi</th>
 </tr>
 </thead>
 <tbody id="tabelRiwayat"></tbody>
 </table>
 
 <script>
-/* ======= CONFIG FIREBASE ======= */
+/* ===== CONFIG FIREBASE ===== */
 var firebaseConfig = {
    apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -113,185 +140,192 @@ var firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
-var chartStok=null, chartHarian=null, chartBulanan=null;
 var currentUser={nama:"",role:""};
+var dataTransaksi = {};
+var dataItems = {};
 
-/* ======= LOGIN ======= */
+/* ===== LOGIN ===== */
 function login(){
   var username=document.getElementById("username").value.trim();
   var role=document.getElementById("roleSelect").value;
-  if(username===""){ alert("Masukkan username"); return;}
-  currentUser.nama=username;
-  currentUser.role=role;
+  if(username===""){ alert("Masukkan username"); return; }
+  currentUser.nama=username; currentUser.role=role;
   document.getElementById("loginDiv").style.display="none";
   document.getElementById("mainDiv").style.display="block";
-  document.getElementById("adminControls").style.display=(role==="admin")?"block":"none";
-  loadBarang(); loadRiwayat(); loadDashboard();
+  loadItems();
+  loadRiwayat();
 }
 
-/* ======= TAMBAH BARANG ======= */
-function tambahBarang(){
-  if(currentUser.role!=="admin"){ alert("Hanya admin bisa tambah"); return; }
-
-  var gudang=document.getElementById("gudangSelect").value;
-  var kode=document.getElementById("kode").value.trim();
-  var nama=document.getElementById("nama").value.trim();
-  var stok=parseInt(document.getElementById("stok").value);
-  var minimum=parseInt(document.getElementById("minimum").value);
-  if(kode===""||nama===""||isNaN(stok)||isNaN(minimum)){ alert("Isi semua data"); return; }
-
-  var id=Date.now();
-  db.ref("items/"+id).set({kode:kode,nama:nama,stok:stok,minimum:minimum,gudang:gudang});
-  document.getElementById("kode").value=""; document.getElementById("nama").value="";
-  document.getElementById("stok").value=""; document.getElementById("minimum").value="";
+/* ===== LOAD ITEMS ===== */
+function loadItems(){
+  db.ref("items").on("value", snap=>{
+    dataItems = snap.val() || {};
+    updateDashboard();
+  });
 }
 
-/* ======= LOAD BARANG ======= */
-function loadBarang(){
-  var gudang=document.getElementById("gudangSelect").value;
-  var tabel=document.getElementById("tabelBarang");
-  db.ref("items").off();
-  db.ref("items").on("value",function(snapshot){
-    tabel.innerHTML=""; var data=snapshot.val(); var labels=[],stokData=[];
-    if(!data){ updateChart(chartStok,[],[]); return;}
-    for(var id in data){
-      var b=data[id]; if(b.gudang!==gudang) continue;
-      var warna=b.stok<=b.minimum?"bg-red-200":"";
-      var row="<tr class='"+warna+"'>";
-      row+="<td class='border p-2'>"+b.kode+"</td>";
-      row+="<td class='border p-2'>"+b.nama+"</td>";
-      row+="<td class='border p-2'>"+b.stok+"</td>";
-      row+="<td class='border p-2'>"+b.minimum+"</td>";
-      row+="<td class='border p-2'>";
-      row+="<button onclick=\"updateStok('"+id+"','masuk')\" class='bg-green-500 text-white px-2 py-1 mr-1 rounded'>+</button>";
-      row+="<button onclick=\"updateStok('"+id+"','keluar')\" class='bg-yellow-500 text-white px-2 py-1 rounded'>-</button>";
-      row+="</td></tr>";
-      tabel.innerHTML+=row;
-      labels.push(b.nama); stokData.push(b.stok);
+/* ===== UPDATE DASHBOARD ===== */
+function updateDashboard(){
+  var labels=[],stokData=[];
+  for(var key in dataItems){
+    labels.push(dataItems[key].nama+" ("+dataItems[key].gudang+")");
+    stokData.push(dataItems[key].stok);
+  }
+  var ctx=document.getElementById("stokChart").getContext("2d");
+  if(window.chart) window.chart.destroy();
+  window.chart=new Chart(ctx,{
+    type:"bar",
+    data:{labels:labels,datasets:[{label:"Stok",data:stokData,backgroundColor:"rgba(54,162,235,0.6)"}]},
+    options:{responsive:true,plugins:{legend:{display:false}}}
+  });
+}
+
+/* ===== TAMBAH BARANG MASUK ===== */
+function tambahBarangMasuk(){
+  var kode=document.getElementById("kodeMasuk").value.trim();
+  var noPRS=document.getElementById("noPRSMasuk").value.trim();
+  var noRR=document.getElementById("noRRMasuk").value.trim();
+  var supplier=document.getElementById("supplierMasuk").value.trim();
+  var item=document.getElementById("itemMasuk").value.trim();
+  var unit=document.getElementById("unitMasuk").value;
+  var qty=parseFloat(document.getElementById("qtyMasuk").value);
+  var departemen=document.getElementById("departemenMasuk").value.trim();
+  var gudang=document.getElementById("gudangMasukSelect").value;
+  var masukStok = document.getElementById("masukStok").checked;
+
+  if(!kode || !noRR || !item || isNaN(qty)){ alert("Isi field wajib!"); return; }
+
+  if(masukStok){
+    // Update stok items
+    db.ref("items").orderByChild("kode").equalTo(kode).once("value", snap=>{
+      if(snap.exists()){
+        var key = Object.keys(snap.val())[0];
+        var stokLama = snap.val()[key].stok || 0;
+        db.ref("items/"+key).update({stok: stokLama + qty});
+      }else{
+        var idNew = db.ref("items").push().key;
+        db.ref("items/"+idNew).set({kode:kode,nama:item,stok:qty,minimum:0,gudang:gudang});
+      }
+    });
+  }
+
+  // Simpan transaksi
+  var id=db.ref("transactions").push().key;
+  db.ref("transactions/"+id).set({
+    tanggal:new Date().toLocaleString(),
+    gudang:gudang,
+    kode:kode,
+    noPRS:noPRS,
+    noRR:noRR,
+    supplier:supplier,
+    item:item,
+    unit:unit,
+    qty:qty,
+    departemen:departemen,
+    tipe:"masuk",
+    masukStok:masukStok,
+    user:currentUser.nama
+  });
+
+  // Reset form
+  document.getElementById("kodeMasuk").value="";
+  document.getElementById("noPRSMasuk").value="";
+  document.getElementById("noRRMasuk").value="";
+  document.getElementById("supplierMasuk").value="";
+  document.getElementById("itemMasuk").value="";
+  document.getElementById("qtyMasuk").value="";
+  document.getElementById("departemenMasuk").value="";
+  document.getElementById("masukStok").checked=true;
+
+  loadRiwayat();
+}
+
+/* ===== TAMBAH BARANG KELUAR ===== */
+function tambahBarangKeluar(){
+  var kode=document.getElementById("kodeKeluar").value.trim();
+  var item=document.getElementById("itemKeluar").value.trim();
+  var unit=document.getElementById("unitKeluar").value;
+  var qty=parseFloat(document.getElementById("qtyKeluar").value);
+  var departemen=document.getElementById("departemenKeluar").value.trim();
+  var gudang=document.getElementById("gudangKeluarSelect").value;
+
+  if(!kode || !item || isNaN(qty)){ alert("Isi field wajib!"); return; }
+
+  // Update stok
+  db.ref("items").orderByChild("kode").equalTo(kode).once("value", snap=>{
+    if(snap.exists()){
+      var key = Object.keys(snap.val())[0];
+      var stokLama = snap.val()[key].stok || 0;
+      db.ref("items/"+key).update({stok: stokLama - qty});
+    }else{
+      alert("Kode barang tidak ditemukan di stok!");
+      return;
     }
-    updateChart(chartStok,labels,stokData);
   });
+
+  // Simpan transaksi
+  var id=db.ref("transactions").push().key;
+  db.ref("transactions/"+id).set({
+    tanggal:new Date().toLocaleString(),
+    gudang:gudang,
+    kode:kode,
+    item:item,
+    unit:unit,
+    qty:qty,
+    departemen:departemen,
+    tipe:"keluar",
+    masukStok:true,
+    user:currentUser.nama
+  });
+
+  // Reset form
+  document.getElementById("kodeKeluar").value="";
+  document.getElementById("itemKeluar").value="";
+  document.getElementById("qtyKeluar").value="";
+  document.getElementById("departemenKeluar").value="";
+
+  loadRiwayat();
 }
 
-/* ======= UPDATE STOK & TRANSAKSI ======= */
-function updateStok(id,tipe){
-  var gudang=document.getElementById("gudangSelect").value;
-  var jumlah=parseInt(prompt("Masukkan jumlah:"));
-  if(isNaN(jumlah)||jumlah<=0){ alert("Jumlah tidak valid"); return;}
-  var ref=db.ref("items/"+id);
-  ref.once("value",function(snapshot){
-    var barang=snapshot.val(); if(!barang) return;
-    var stokBaru=(tipe==="masuk")?barang.stok+jumlah:barang.stok-jumlah;
-    if(stokBaru<0) stokBaru=0; ref.update({stok:stokBaru});
-    // TRANSAKSI
-    var trxRef=db.ref("transactions"); var trxKey=trxRef.push().key;
-    trxRef.child(trxKey).set({
-      tanggal:new Date().toLocaleString(),
-      itemId:id,
-      kode:barang.kode,
-      nama:barang.nama,
-      jenis:tipe,
-      qty:jumlah,
-      gudang:gudang,
-      user:currentUser.nama
-    });
-    // AUDIT
-    var auditRef=db.ref("audit"); var auditKey=auditRef.push().key;
-    auditRef.child(auditKey).set({
-      action:(tipe==="masuk")?"Barang Masuk":"Barang Keluar",
-      itemId:id,
-      kode:barang.kode,
-      user:currentUser.nama,
-      tanggal:new Date().toLocaleString()
-    });
-    loadDashboard();
-  });
-}
-
-/* ======= LOAD RIWAYAT ======= */
+/* ===== LOAD RIWAYAT ===== */
 function loadRiwayat(){
   var tabel=document.getElementById("tabelRiwayat");
-  db.ref("transactions").on("value",function(snapshot){
-    tabel.innerHTML=""; var data=snapshot.val(); if(!data) return;
-    Object.keys(data).reverse().forEach(function(key){
-      var t=data[key];
+  tabel.innerHTML="";
+  db.ref("transactions").once("value").then(function(snapshot){
+    dataTransaksi = snapshot.val() || {};
+    var filtered = Object.entries(dataTransaksi).filter(([key,t])=>{
+      var awal=document.getElementById("filterTanggalAwal").value;
+      var akhir=document.getElementById("filterTanggalAkhir").value;
+      var gudang=document.getElementById("filterGudang").value.toLowerCase();
+      var kode=document.getElementById("filterKode").value.toLowerCase();
+      var item=document.getElementById("filterItem").value.toLowerCase();
+      var supplier=document.getElementById("filterSupplier").value.toLowerCase();
+      var departemen=document.getElementById("filterDepartemen").value.toLowerCase();
+      var tipe=document.getElementById("filterTipe").value;
+
+      var tgl = new Date(t.tanggal);
+      if(awal && tgl<new Date(awal)) return false;
+      if(akhir && tgl>new Date(akhir+" 23:59:59")) return false;
+      if(gudang && !t.gudang.toLowerCase().includes(gudang)) return false;
+      if(kode && !t.kode.toLowerCase().includes(kode)) return false;
+      if(item && !t.item.toLowerCase().includes(item)) return false;
+      if(supplier && !t.supplier.toLowerCase().includes(supplier)) return false;
+      if(departemen && !t.departemen.toLowerCase().includes(departemen)) return false;
+      if(tipe && t.tipe!==tipe) return false;
+      return true;
+    });
+
+    filtered.forEach(([key,t])=>{
       var row="<tr>";
       row+="<td class='border p-2'>"+t.tanggal+"</td>";
       row+="<td class='border p-2'>"+t.gudang+"</td>";
-      row+="<td class='border p-2'>"+t.kode+"</td>";
-      row+="<td class='border p-2'>"+t.nama+"</td>";
-      row+="<td class='border p-2'>"+t.jenis+"</td>";
+      row+="<td class='border p-2'>"+(t.kode||"-")+"</td>";
+      row+="<td class='border p-2'>"+(t.item||"-")+"</td>";
+      row+="<td class='border p-2'>"+(t.unit||"-")+"</td>";
       row+="<td class='border p-2'>"+t.qty+"</td>";
+      row+="<td class='border p-2'>"+(t.supplier||"-")+"</td>";
+      row+="<td class='border p-2'>"+(t.departemen||"-")+"</td>";
+      row+="<td class='border p-2'>"+(t.masukStok?"Yes":"No")+"</td>";
+      row+="<td class='border p-2'>"+t.tipe+"</td>";
       row+="<td class='border p-2'>"+t.user+"</td>";
-      row+="</tr>"; tabel.innerHTML+=row;
-    });
-  });
-}
-
-/* ======= DASHBOARD HAR/BLN ======= */
-function loadDashboard(){
-  db.ref("transactions").once("value").then(function(snapshot){
-    var data=snapshot.val(); if(!data) return;
-    var daily={}, monthly={};
-    Object.values(data).forEach(function(t){
-      var date=new Date(t.tanggal);
-      var day=date.toLocaleDateString();
-      var month=date.getFullYear()+"-"+(date.getMonth()+1);
-      daily[day]=(daily[day]||0)+t.qty;
-      monthly[month]=(monthly[month]||0)+t.qty;
-    });
-    updateChart(chartHarian,Object.keys(daily),Object.values(daily));
-    updateChart(chartBulanan,Object.keys(monthly),Object.values(monthly));
-  });
-}
-
-/* ======= UPDATE CHART ======= */
-function updateChart(chartObj,labels,data){
-  if(chartObj) chartObj.destroy();
-  var ctx=document.createElement("canvas");
-  if(chartObj===chartStok) ctx=document.getElementById("chartStok").getContext("2d");
-  else if(chartObj===chartHarian) ctx=document.getElementById("chartHarian").getContext("2d");
-  else ctx=document.getElementById("chartBulanan").getContext("2d");
-  chartObj=new Chart(ctx,{type:"bar",data:{labels:labels,datasets:[{label:"Jumlah",data:data,backgroundColor:"rgba(54,162,235,0.7)"}]}});
-  if(chartObj===chartStok) window.chartStok=chartObj;
-  else if(chartObj===chartHarian) window.chartHarian=chartObj;
-  else window.chartBulanan=chartObj;
-}
-
-/* ======= EXPORT EXCEL ======= */
-function exportExcel(){
-  var rows=document.querySelectorAll("#tabelBarang tr"); var csv="Kode,Nama,Stok,Minimum,Gudang\n";
-  rows.forEach(function(row){
-    var cols=row.querySelectorAll("td");
-    if(cols.length>0){ csv+=cols[0].innerText+","+cols[1].innerText+","+cols[2].innerText+","+cols[3].innerText+","+document.getElementById("gudangSelect").value+"\n";}
-  });
-  var blob=new Blob([csv],{type:"text/csv"});
-  var link=document.createElement("a"); link.href=URL.createObjectURL(blob); link.download="data_gudang_ultimate_plus.pdf.csv"; link.click();
-}
-
-/* ======= EXPORT PDF ======= */
-function exportPDF(){
-  const { jsPDF } = window.jspdf;
-  var doc=new jsPDF();
-  var rows=[], headers=["Kode","Nama","Stok","Minimum","Gudang"];
-  document.querySelectorAll("#tabelBarang tr").forEach(tr=>{
-    var cols=tr.querySelectorAll("td"); if(cols.length>0) rows.push([cols[0].innerText,cols[1].innerText,cols[2].innerText,cols[3].innerText,document.getElementById("gudangSelect").value]);
-  });
-  doc.autoTable({head:[headers], body:rows});
-  doc.save("data_gudang_ultimate_plus.pdf");
-}
-
-/* ======= BACKUP JSON ======= */
-function backupData(){
-  db.ref("/").once("value").then(function(snapshot){
-    var data=JSON.stringify(snapshot.val(),null,2);
-    var blob=new Blob([data],{type:"application/json"});
-    var link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download="backup_gudang_ultimate_plus.json";
-    link.click();
-  });
-}
-</script>
-</body>
-</html>
+      if(currentUser
