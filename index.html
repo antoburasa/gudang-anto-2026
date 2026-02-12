@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang 2.0 - Fresh PRO</title>
+<title>Sistem Gudang 2.0 Ultimate PRO PLUS</title>
 
 <!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +17,20 @@
 </head>
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG 2.0 FRESH PRO</h1>
+<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG 2.0 ULTIMATE PRO PLUS</h1>
+
+<!-- LOGIN -->
+<div id="loginDiv" class="bg-white p-4 rounded shadow mb-4">
+<input id="username" placeholder="Username" class="border p-2 mr-2">
+<select id="roleSelect" class="border p-2 mr-2">
+<option value="admin">Admin</option>
+<option value="staff">Staff</option>
+</select>
+<button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
+</div>
+
+<!-- MAIN INTERFACE -->
+<div id="mainDiv" style="display:none">
 
 <!-- Pilih Gudang -->
 <select id="gudangSelect" class="border p-2 mb-4" onchange="loadBarang()">
@@ -29,14 +42,16 @@
 <option value="tambak">Gudang Tambak</option>
 </select>
 
-<!-- Input Barang -->
-<div class="bg-white p-4 rounded shadow mb-4">
+<!-- Input Barang (admin only) -->
+<div id="adminControls" class="bg-white p-4 rounded shadow mb-4">
+<input id="kode" placeholder="Kode Barang" class="border p-2 mr-2">
 <input id="nama" placeholder="Nama Barang" class="border p-2 mr-2">
 <input id="stok" type="number" placeholder="Stok" class="border p-2 mr-2">
 <input id="minimum" type="number" placeholder="Minimum" class="border p-2 mr-2">
 
 <button onclick="tambahBarang()" class="bg-blue-500 text-white px-4 py-2 rounded">Tambah</button>
 <button onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2 rounded ml-2">Export Excel</button>
+<button onclick="backupData()" class="bg-yellow-500 text-white px-4 py-2 rounded ml-2">Backup JSON</button>
 </div>
 
 <!-- Tabel Barang -->
@@ -44,6 +59,7 @@
 <table class="w-full border bg-white mb-6">
 <thead>
 <tr class="bg-gray-200">
+<th class="border p-2">Kode</th>
 <th class="border p-2">Nama</th>
 <th class="border p-2">Stok</th>
 <th class="border p-2">Minimum</th>
@@ -59,14 +75,16 @@
 
 <!-- Riwayat Transaksi -->
 <h2 class="font-bold">Riwayat Transaksi</h2>
-<table class="w-full border bg-white">
+<table class="w-full border bg-white mb-6">
 <thead>
 <tr class="bg-gray-200">
 <th class="border p-2">Tanggal</th>
 <th class="border p-2">Gudang</th>
-<th class="border p-2">Barang</th>
+<th class="border p-2">Kode</th>
+<th class="border p-2">Nama</th>
 <th class="border p-2">Tipe</th>
 <th class="border p-2">Jumlah</th>
+<th class="border p-2">User</th>
 </tr>
 </thead>
 <tbody id="tabelRiwayat"></tbody>
@@ -75,38 +93,56 @@
 <script>
 /* ======= CONFIG FIREBASE ======= */
 var firebaseConfig = {
-  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
-    authDomain: "gudang-anto-2026.firebaseapp.com",
-    databaseURL: "https://gudang-anto-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "gudang-anto-2026",
-    storageBucket: "gudang-anto-2026.firebasestorage.app",
-    messagingSenderId: "711961129196",
-    appId: "1:711961129196:web:7e2d2e74539e112dfff5c9"
+  apiKey: "ISI_APIKEY_ANDA",
+  authDomain: "ISI_AUTHDOMAIN_ANDA",
+  databaseURL: "ISI_DATABASEURL_ANDA",
+  projectId: "ISI_PROJECTID_ANDA",
+  storageBucket: "ISI_STORAGEBUCKET_ANDA",
+  messagingSenderId: "ISI_MESSAGINGSENDERID_ANDA",
+  appId: "ISI_APPID_ANDA"
 };
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 var chart = null;
+var currentUser = { nama:"", role:"" };
+
+/* ======= LOGIN ======= */
+function login(){
+  var username = document.getElementById("username").value.trim();
+  var role = document.getElementById("roleSelect").value;
+  if(username===""){ alert("Masukkan username"); return; }
+  currentUser.nama=username;
+  currentUser.role=role;
+  document.getElementById("loginDiv").style.display="none";
+  document.getElementById("mainDiv").style.display="block";
+  document.getElementById("adminControls").style.display=(role==="admin")?"block":"none";
+
+  loadBarang();
+  loadRiwayat();
+}
 
 /* ======= TAMBAH BARANG ======= */
 function tambahBarang(){
+  if(currentUser.role!=="admin"){ alert("Hanya admin bisa tambah"); return; }
+
   var gudang = document.getElementById("gudangSelect").value;
+  var kode = document.getElementById("kode").value.trim();
   var nama = document.getElementById("nama").value.trim();
   var stok = parseInt(document.getElementById("stok").value);
   var minimum = parseInt(document.getElementById("minimum").value);
 
-  if(nama==="" || isNaN(stok) || isNaN(minimum)){
-    alert("Isi semua data dengan benar");
-    return;
-  }
+  if(kode===""||nama===""||isNaN(stok)||isNaN(minimum)){ alert("Isi semua data"); return; }
 
   var id = Date.now();
   db.ref("items/"+id).set({
+    kode:kode,
     nama:nama,
     stok:stok,
     minimum:minimum,
     gudang:gudang
   });
 
+  document.getElementById("kode").value="";
   document.getElementById("nama").value="";
   document.getElementById("stok").value="";
   document.getElementById("minimum").value="";
@@ -124,16 +160,14 @@ function loadBarang(){
     var labels = [];
     var stokData = [];
 
-    if(!data){
-      updateChart([],[]);
-      return;
-    }
+    if(!data){ updateChart([],[]); return; }
 
     for(var id in data){
       var b = data[id];
-      if(b.gudang !== gudang) continue;
-      var warna = b.stok <= b.minimum ? "bg-red-200" : "";
+      if(b.gudang!==gudang) continue;
+      var warna = b.stok<=b.minimum ? "bg-red-200" : "";
       var row="<tr class='"+warna+"'>";
+      row+="<td class='border p-2'>"+b.kode+"</td>";
       row+="<td class='border p-2'>"+b.nama+"</td>";
       row+="<td class='border p-2'>"+b.stok+"</td>";
       row+="<td class='border p-2'>"+b.minimum+"</td>";
@@ -151,56 +185,68 @@ function loadBarang(){
   });
 }
 
-/* ======= UPDATE STOK & SIMPAN TRANSAKSI ======= */
+/* ======= UPDATE STOK & TRANSAKSI ======= */
 function updateStok(id, tipe){
   var gudang = document.getElementById("gudangSelect").value;
   var jumlah = parseInt(prompt("Masukkan jumlah:"));
-  if(isNaN(jumlah) || jumlah<=0){ alert("Jumlah tidak valid"); return; }
+  if(isNaN(jumlah)||jumlah<=0){ alert("Jumlah tidak valid"); return; }
 
   var ref = db.ref("items/"+id);
   ref.once("value", function(snapshot){
     var barang = snapshot.val();
     if(!barang) return;
 
-    var stokBaru = (tipe==="masuk") ? barang.stok+jumlah : barang.stok-jumlah;
+    var stokBaru = (tipe==="masuk")? barang.stok+jumlah : barang.stok-jumlah;
     if(stokBaru<0) stokBaru=0;
-
     ref.update({stok:stokBaru});
 
-    // Simpan transaksi
+    // TRANSAKSI
     var trxRef = db.ref("transactions");
     var trxKey = trxRef.push().key;
     trxRef.child(trxKey).set({
       tanggal: new Date().toLocaleString(),
       itemId:id,
+      kode:barang.kode,
       nama:barang.nama,
       jenis:tipe,
       qty:jumlah,
       gudang:gudang,
-      user:"Admin"
+      user:currentUser.nama
+    });
+
+    // AUDIT LOG
+    var auditRef = db.ref("audit");
+    var auditKey = auditRef.push().key;
+    auditRef.child(auditKey).set({
+      action: (tipe==="masuk")?"Barang Masuk":"Barang Keluar",
+      itemId:id,
+      kode:barang.kode,
+      user:currentUser.nama,
+      tanggal:new Date().toLocaleString()
     });
   });
 }
 
 /* ======= LOAD RIWAYAT ======= */
 function loadRiwayat(){
-  var tabel = document.getElementById("tabelRiwayat");
+  var tabel=document.getElementById("tabelRiwayat");
   tabel.innerHTML="";
-
   db.ref("transactions").on("value", function(snapshot){
     tabel.innerHTML="";
-    var data = snapshot.val();
+    var data=snapshot.val();
     if(!data) return;
 
-    var keys = Object.keys(data).reverse();
+    var keys=Object.keys(data).reverse();
     keys.forEach(function(key){
       var t=data[key];
       var row="<tr>";
       row+="<td class='border p-2'>"+t.tanggal+"</td>";
       row+="<td class='border p-2'>"+t.gudang+"</td>";
+      row+="<td class='border p-2'>"+t.kode+"</td>";
       row+="<td class='border p-2'>"+t.nama+"</td>";
       row+="<td class='border p-2'>"+t.jenis+"</td>";
       row+="<td class='border p-2'>"+t.qty+"</td>";
+      row+="<td class='border p-2'>"+t.user+"</td>";
       row+="</tr>";
       tabel.innerHTML+=row;
     });
@@ -217,27 +263,34 @@ function updateChart(labels,data){
   });
 }
 
-/* ======= EXPORT CSV ======= */
+/* ======= EXPORT EXCEL ======= */
 function exportExcel(){
   var rows=document.querySelectorAll("#tabelBarang tr");
-  var csv="Nama,Stok,Minimum,Gudang\n";
+  var csv="Kode,Nama,Stok,Minimum,Gudang\n";
   rows.forEach(function(row){
     var cols=row.querySelectorAll("td");
     if(cols.length>0){
-      csv+=cols[0].innerText+","+cols[1].innerText+","+cols[2].innerText+","+document.getElementById("gudangSelect").value+"\n";
+      csv+=cols[0].innerText+","+cols[1].innerText+","+cols[2].innerText+","+cols[3].innerText+","+document.getElementById("gudangSelect").value+"\n";
     }
   });
   var blob=new Blob([csv],{type:"text/csv"});
   var link=document.createElement("a");
   link.href=URL.createObjectURL(blob);
-  link.download="data_gudang.csv";
+  link.download="data_gudang_ultimate_plus.csv";
   link.click();
 }
 
-/* ======= LOAD AWAL ======= */
-loadBarang();
-loadRiwayat();
-
+/* ======= BACKUP DATA JSON ======= */
+function backupData(){
+  db.ref("/").once("value").then(function(snapshot){
+    var data=JSON.stringify(snapshot.val(),null,2);
+    var blob=new Blob([data],{type:"application/json"});
+    var link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download="backup_gudang_ultimate_plus.json";
+    link.click();
+  });
+}
 </script>
 </body>
 </html>
