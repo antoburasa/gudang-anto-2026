@@ -10,13 +10,14 @@
 <style>
 body{font-family:Arial;padding:20px;background:#f4f6f9}
 h2{color:#2c3e50}
-input,button{padding:6px;margin:4px}
+input,select,button{padding:6px;margin:4px}
 button{background:#27ae60;color:white;border:none;cursor:pointer}
 button:hover{opacity:0.8}
 table{border-collapse:collapse;width:100%;background:white;margin-top:10px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
 th{background:#34495e;color:white}
 .box{background:white;padding:15px;margin-bottom:20px;border-radius:6px}
+.warning{color:red;font-weight:bold}
 </style>
 </head>
 <body>
@@ -27,31 +28,57 @@ th{background:#34495e;color:white}
 <h3>Master Barang</h3>
 <input id="kode" placeholder="Kode Barang">
 <input id="nama" placeholder="Nama Barang">
-<button onclick="tambah()">Tambah Barang</button>
+<input id="min" type="number" placeholder="Minimum Stok">
+<button onclick="tambahBarang()">Tambah Barang</button>
 </div>
 
 <div class="box">
 <h3>Barang Masuk</h3>
-<input id="kodeMasuk" placeholder="Kode">
+
+<input list="barangList" id="kodeMasuk" placeholder="Ketik / Pilih Kode">
+<datalist id="barangList"></datalist>
+
+<select id="gudangMasuk">
+<option>Ingredients</option>
+<option>Label</option>
+<option>ATK</option>
+<option>General Store A</option>
+<option>General Store B</option>
+<option>Tambak</option>
+</select>
+
 <input id="qtyMasuk" type="number" placeholder="Qty">
 <button onclick="masuk()">Proses Masuk</button>
 </div>
 
 <div class="box">
 <h3>Barang Keluar</h3>
-<input id="kodeKeluar" placeholder="Kode">
+
+<input list="barangList" id="kodeKeluar" placeholder="Ketik / Pilih Kode">
+
+<select id="gudangKeluar">
+<option>Ingredients</option>
+<option>Label</option>
+<option>ATK</option>
+<option>General Store A</option>
+<option>General Store B</option>
+<option>Tambak</option>
+</select>
+
 <input id="qtyKeluar" type="number" placeholder="Qty">
 <button onclick="keluar()">Proses Keluar</button>
 </div>
 
 <div class="box">
-<h3>Stok Barang</h3>
+<h3>Stok Per Gudang</h3>
 <table>
 <thead>
 <tr>
+<th>Gudang</th>
 <th>Kode</th>
 <th>Nama</th>
 <th>Stok</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody id="stokTable"></tbody>
@@ -59,14 +86,14 @@ th{background:#34495e;color:white}
 </div>
 
 <div class="box">
-<h3>Riwayat Transaksi</h3>
+<h3>Riwayat</h3>
 <table>
 <thead>
 <tr>
 <th>Tanggal</th>
 <th>Tipe</th>
+<th>Gudang</th>
 <th>Kode</th>
-<th>Nama</th>
 <th>Qty</th>
 </tr>
 </thead>
@@ -76,7 +103,7 @@ th{background:#34495e;color:white}
 
 <script>
 
-// ================= FIREBASE CONFIG =================
+// FIREBASE CONFIG
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -91,34 +118,46 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 // ================= MASTER BARANG =================
-function tambah(){
+function tambahBarang(){
 var k=document.getElementById("kode").value;
 var n=document.getElementById("nama").value;
+var m=parseInt(document.getElementById("min").value)||0;
 
 if(k==""||n==""){alert("Isi data");return;}
 
-db.ref("barang/"+k).set({nama:n});
-db.ref("stok/"+k).set(0);
-
+db.ref("barang/"+k).set({nama:n,min:m});
 document.getElementById("kode").value="";
 document.getElementById("nama").value="";
-alert("Barang ditambahkan");
+document.getElementById("min").value="";
 }
 
-// ================= BARANG MASUK =================
+// LOAD DATALIST
+db.ref("barang").on("value",function(snapshot){
+var html="";
+snapshot.forEach(function(child){
+html+="<option value='"+child.key+"'>";
+});
+document.getElementById("barangList").innerHTML=html;
+});
+
+// ================= MASUK =================
 function masuk(){
 var k=document.getElementById("kodeMasuk").value;
+var g=document.getElementById("gudangMasuk").value;
 var q=parseInt(document.getElementById("qtyMasuk").value);
 
 if(!k||!q){alert("Isi data");return;}
 
-db.ref("stok/"+k).once("value",function(s){
+var ref=db.ref("stok/"+g+"/"+k);
+
+ref.once("value",function(s){
 var lama=s.val()||0;
-db.ref("stok/"+k).set(lama+q);
+ref.set(lama+q);
 
 db.ref("riwayat").push({
 tanggal:new Date().toLocaleString(),
 tipe:"Masuk",
+gudang:g,
 kode:k,
 qty:q
 });
@@ -127,14 +166,17 @@ qty:q
 document.getElementById("qtyMasuk").value="";
 }
 
-// ================= BARANG KELUAR =================
+// ================= KELUAR =================
 function keluar(){
 var k=document.getElementById("kodeKeluar").value;
+var g=document.getElementById("gudangKeluar").value;
 var q=parseInt(document.getElementById("qtyKeluar").value);
 
 if(!k||!q){alert("Isi data");return;}
 
-db.ref("stok/"+k).once("value",function(s){
+var ref=db.ref("stok/"+g+"/"+k);
+
+ref.once("value",function(s){
 var lama=s.val()||0;
 
 if(lama<q){
@@ -142,11 +184,12 @@ alert("Stok tidak cukup");
 return;
 }
 
-db.ref("stok/"+k).set(lama-q);
+ref.set(lama-q);
 
 db.ref("riwayat").push({
 tanggal:new Date().toLocaleString(),
 tipe:"Keluar",
+gudang:g,
 kode:k,
 qty:q
 });
@@ -160,20 +203,34 @@ db.ref("stok").on("value",function(snapshot){
 
 var html="";
 
-snapshot.forEach(function(child){
+snapshot.forEach(function(gudangSnap){
 
-var kode = child.key;
-var qty = child.val();
+var gudang=gudangSnap.key;
+
+gudangSnap.forEach(function(itemSnap){
+
+var kode=itemSnap.key;
+var qty=itemSnap.val();
 
 db.ref("barang/"+kode).once("value",function(b){
 
-var nama = "-";
-if(b.val()){ nama = b.val().nama; }
+var nama="-";
+var min=0;
+
+if(b.val()){
+nama=b.val().nama;
+min=b.val().min||0;
+}
+
+var status="Aman";
+if(qty<=min){status="<span class='warning'>Minimum</span>";}
 
 html+="<tr>";
+html+="<td>"+gudang+"</td>";
 html+="<td>"+kode+"</td>";
 html+="<td>"+nama+"</td>";
 html+="<td>"+qty+"</td>";
+html+="<td>"+status+"</td>";
 html+="</tr>";
 
 document.getElementById("stokTable").innerHTML=html;
@@ -184,7 +241,9 @@ document.getElementById("stokTable").innerHTML=html;
 
 });
 
-// ================= TAMPIL RIWAYAT =================
+});
+
+// ================= RIWAYAT =================
 db.ref("riwayat").limitToLast(100).on("value",function(snapshot){
 
 var html="";
@@ -197,29 +256,16 @@ data.push(child.val());
 data.reverse();
 
 for(var i=0;i<data.length;i++){
-
-(function(item){
-
-db.ref("barang/"+item.kode).once("value",function(b){
-
-var nama="-";
-if(b.val()){ nama=b.val().nama; }
-
 html+="<tr>";
-html+="<td>"+item.tanggal+"</td>";
-html+="<td>"+item.tipe+"</td>";
-html+="<td>"+item.kode+"</td>";
-html+="<td>"+nama+"</td>";
-html+="<td>"+item.qty+"</td>";
+html+="<td>"+data[i].tanggal+"</td>";
+html+="<td>"+data[i].tipe+"</td>";
+html+="<td>"+data[i].gudang+"</td>";
+html+="<td>"+data[i].kode+"</td>";
+html+="<td>"+data[i].qty+"</td>";
 html+="</tr>";
+}
 
 document.getElementById("riwayatTable").innerHTML=html;
-
-});
-
-})(data[i]);
-
-}
 
 });
 
