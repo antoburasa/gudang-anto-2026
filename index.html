@@ -2,98 +2,80 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang Ultimate PRO PLUS 2.0</title>
+<title>SISTEM GUDANG ULTIMATE 2.1 TANPA LOGIN</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+<style>
+body{font-family:Arial;margin:20px;background:#f4f6f9}
+h2{margin-top:30px}
+input,select{padding:6px;margin:4px}
+button{padding:6px 10px;margin:4px;border:none;background:#2e7d32;color:white;cursor:pointer}
+button.red{background:#c62828}
+table{border-collapse:collapse;width:100%;background:white}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th{background:#2e7d32;color:white}
+</style>
 </head>
-<body class="bg-gray-100 p-6">
+<body>
 
-<h1 class="text-2xl font-bold mb-4">SISTEM GUDANG ULTIMATE PRO PLUS 2.0</h1>
+<h1>SISTEM GUDANG ULTIMATE 2.1</h1>
 
-<!-- LOGIN -->
-<div id="loginDiv" class="bg-white p-4 rounded shadow mb-4">
-  <input id="username" placeholder="Username" class="border p-2 mr-2">
-  <select id="roleSelect" class="border p-2 mr-2">
-    <option value="admin">Admin</option>
-    <option value="staff">Staff</option>
-  </select>
-  <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded">
-    Login
-  </button>
-</div>
-
-<!-- MAIN -->
-<div id="mainDiv" style="display:none">
-
-<div class="bg-white p-4 rounded shadow mb-4">
-<h2 class="font-bold mb-2">Barang Masuk</h2>
-
-<input id="kodeMasuk" placeholder="Kode Barang" class="border p-2 mr-2 mb-2">
-<input id="itemMasuk" placeholder="Item" class="border p-2 mr-2 mb-2">
-<input id="noRRMasuk" placeholder="No RR" class="border p-2 mr-2 mb-2">
-
-<select id="unitMasuk" class="border p-2 mr-2 mb-2">
+<h2>Barang Masuk</h2>
+<input id="kode" placeholder="Kode Barang">
+<input id="item" placeholder="Nama Item">
+<input id="supplier" placeholder="Supplier">
+<select id="unit">
 <option>kg</option><option>meter</option><option>roll</option>
 <option>ball</option><option>dos</option><option>box</option>
 <option>pcs</option><option>M3</option><option>liter</option>
 <option>ton</option><option>tins</option><option>drum</option>
 <option>sheet</option><option>ujung</option>
 </select>
-
-<input id="qtyMasuk" type="number" placeholder="Qty" class="border p-2 mr-2 mb-2">
-
-<select id="gudangMasuk" class="border p-2 mr-2 mb-2">
-<option value="Ingredients">Gudang Ingredients</option>
-<option value="Label">Gudang Label</option>
-<option value="ATK">Gudang ATK</option>
-<option value="General A">General Store A</option>
-<option value="General B">General Store B</option>
-<option value="Tambak">Gudang Tambak</option>
+<input type="number" id="qty" placeholder="Qty">
+<select id="gudang">
+<option value="ingredients">Gudang Ingredients</option>
+<option value="label">Gudang Label</option>
+<option value="atk">Gudang ATK</option>
+<option value="general_store_a">General Store A</option>
+<option value="general_store_b">General Store B</option>
+<option value="tambak">Gudang Tambak</option>
 </select>
+<button onclick="tambahMasuk()">Tambah Masuk</button>
 
-<label class="mr-2">
-<input type="checkbox" id="masukStok" checked> Masuk Stok
-</label>
+<h2>Barang Keluar</h2>
+<input id="kodeKeluar" placeholder="Kode Barang">
+<input type="number" id="qtyKeluar" placeholder="Qty">
+<select id="gudangKeluar">
+<option value="ingredients">Gudang Ingredients</option>
+<option value="label">Gudang Label</option>
+<option value="atk">Gudang ATK</option>
+<option value="general_store_a">General Store A</option>
+<option value="general_store_b">General Store B</option>
+<option value="tambak">Gudang Tambak</option>
+</select>
+<button onclick="tambahKeluar()">Tambah Keluar</button>
 
-<br><br>
-<button onclick="tambahMasuk()" class="bg-green-500 text-white px-4 py-2 rounded">
-Tambah Barang Masuk
-</button>
-
-</div>
-
-<!-- RIWAYAT -->
-<div class="bg-white p-4 rounded shadow">
-<h2 class="font-bold mb-2">Riwayat Transaksi</h2>
-
-<table class="w-full border">
+<h2>Riwayat Transaksi</h2>
+<button onclick="exportExcel()">Export Excel</button>
+<table>
 <thead>
-<tr class="bg-gray-200">
-<th class="border p-2">Tanggal</th>
-<th class="border p-2">Gudang</th>
-<th class="border p-2">Kode</th>
-<th class="border p-2">Item</th>
-<th class="border p-2">Qty</th>
-<th class="border p-2">Masuk Stok</th>
-<th class="border p-2">User</th>
+<tr>
+<th>Tanggal</th><th>Tipe</th><th>Gudang</th>
+<th>Kode</th><th>Item</th><th>Qty</th>
+<th>Unit</th><th>Aksi</th>
 </tr>
 </thead>
-<tbody id="tabelRiwayat"></tbody>
+<tbody id="tbody"></tbody>
 </table>
 
-</div>
-</div>
+<h2>Grafik Total Stok</h2>
+<canvas id="chart"></canvas>
 
 <script>
-
-/* ==========================
-   FIREBASE CONFIG
-   GANTI DENGAN MILIK ANDA
-========================== */
-
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -107,100 +89,118 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-var currentUser = {};
-
-/* ==========================
-   LOGIN FUNCTION
-========================== */
-
-function login(){
-  const username = document.getElementById("username").value.trim();
-  const role = document.getElementById("roleSelect").value;
-
-  if(!username){
-    alert("Masukkan username dulu");
-    return;
-  }
-
-  currentUser.nama = username;
-  currentUser.role = role;
-
-  document.getElementById("loginDiv").style.display = "none";
-  document.getElementById("mainDiv").style.display = "block";
-
-  loadRiwayat();
-}
-
-/* ==========================
-   TAMBAH BARANG MASUK
-========================== */
-
 function tambahMasuk(){
+var data={
+tanggal:new Date().toLocaleString(),
+tipe:"Masuk",
+kode:document.getElementById("kode").value,
+item:document.getElementById("item").value,
+supplier:document.getElementById("supplier").value,
+unit:document.getElementById("unit").value,
+qty:Number(document.getElementById("qty").value),
+gudang:document.getElementById("gudang").value
+};
 
-  const kode = document.getElementById("kodeMasuk").value.trim();
-  const item = document.getElementById("itemMasuk").value.trim();
-  const noRR = document.getElementById("noRRMasuk").value.trim();
-  const unit = document.getElementById("unitMasuk").value;
-  const qty = parseFloat(document.getElementById("qtyMasuk").value);
-  const gudang = document.getElementById("gudangMasuk").value;
-  const masukStok = document.getElementById("masukStok").checked;
+db.ref("transactions").push(data);
 
-  if(!kode || !item || isNaN(qty)){
-    alert("Lengkapi data!");
-    return;
-  }
-
-  const id = db.ref("transactions").push().key;
-
-  db.ref("transactions/"+id).set({
-    tanggal: new Date().toLocaleString(),
-    kode: kode,
-    item: item,
-    noRR: noRR,
-    unit: unit,
-    qty: qty,
-    gudang: gudang,
-    masukStok: masukStok,
-    user: currentUser.nama
-  });
-
-  if(masukStok){
-    db.ref("stok/"+kode).once("value").then(snap=>{
-      let stokLama = snap.val() || 0;
-      db.ref("stok/"+kode).set(stokLama + qty);
-    });
-  }
-
-  alert("Barang masuk berhasil!");
+db.ref("stok/"+data.gudang+"/"+data.kode)
+.transaction(function(current){
+return (current||0)+data.qty;
+});
 }
 
-/* ==========================
-   LOAD RIWAYAT REALTIME
-========================== */
+function tambahKeluar(){
+var data={
+tanggal:new Date().toLocaleString(),
+tipe:"Keluar",
+kode:document.getElementById("kodeKeluar").value,
+qty:Number(document.getElementById("qtyKeluar").value),
+gudang:document.getElementById("gudangKeluar").value
+};
 
-function loadRiwayat(){
-  db.ref("transactions").on("value", snap=>{
-    const data = snap.val() || {};
-    const tabel = document.getElementById("tabelRiwayat");
-    tabel.innerHTML = "";
+db.ref("transactions").push(data);
 
-    Object.values(data).forEach(t=>{
-      tabel.innerHTML += `
-        <tr>
-          <td class="border p-2">${t.tanggal}</td>
-          <td class="border p-2">${t.gudang}</td>
-          <td class="border p-2">${t.kode}</td>
-          <td class="border p-2">${t.item}</td>
-          <td class="border p-2">${t.qty}</td>
-          <td class="border p-2">${t.masukStok ? "Yes" : "No"}</td>
-          <td class="border p-2">${t.user}</td>
-        </tr>
-      `;
-    });
-  });
+db.ref("stok/"+data.gudang+"/"+data.kode)
+.transaction(function(current){
+return (current||0)-data.qty;
+});
 }
 
+function loadData(){
+db.ref("transactions").on("value",function(snapshot){
+var tbody=document.getElementById("tbody");
+tbody.innerHTML="";
+var stokTotal={};
+
+snapshot.forEach(function(child){
+var d=child.val();
+var key=child.key;
+
+tbody.innerHTML+=`
+<tr>
+<td>${d.tanggal}</td>
+<td>${d.tipe}</td>
+<td>${d.gudang}</td>
+<td>${d.kode||""}</td>
+<td>${d.item||""}</td>
+<td>${d.qty||0}</td>
+<td>${d.unit||""}</td>
+<td>
+<button onclick="editData('${key}')">Edit</button>
+<button class="red" onclick="hapusData('${key}')">Hapus</button>
+</td>
+</tr>
+`;
+
+if(!stokTotal[d.gudang]) stokTotal[d.gudang]=0;
+if(d.tipe=="Masuk") stokTotal[d.gudang]+=Number(d.qty);
+if(d.tipe=="Keluar") stokTotal[d.gudang]-=Number(d.qty);
+
+});
+
+updateChart(stokTotal);
+});
+}
+
+function hapusData(key){
+if(confirm("Hapus transaksi?")){
+db.ref("transactions/"+key).remove();
+}
+}
+
+function editData(key){
+var qtyBaru=prompt("Masukkan Qty Baru:");
+if(qtyBaru!=null){
+db.ref("transactions/"+key+"/qty").set(Number(qtyBaru));
+}
+}
+
+var chart;
+function updateChart(data){
+var ctx=document.getElementById("chart").getContext("2d");
+var labels=Object.keys(data);
+var values=Object.values(data);
+
+if(chart) chart.destroy();
+
+chart=new Chart(ctx,{
+type:"bar",
+data:{labels:labels,datasets:[{label:"Total Stok",data:values}]}
+});
+}
+
+function exportExcel(){
+db.ref("transactions").once("value").then(function(snapshot){
+var data=[];
+snapshot.forEach(function(child){data.push(child.val());});
+var ws=XLSX.utils.json_to_sheet(data);
+var wb=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb,ws,"Riwayat");
+XLSX.writeFile(wb,"Riwayat_Transaksi.xlsx");
+});
+}
+
+loadData();
 </script>
-
 </body>
 </html>
