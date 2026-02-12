@@ -8,57 +8,86 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
-body{font-family:Arial;margin:20px;background:#f4f6f9}
-h2{margin-top:40px}
-input,select{padding:6px;margin:4px}
-button{padding:6px 12px;background:#2e7d32;color:white;border:none;cursor:pointer}
-button:hover{background:#1b5e20}
-table{width:100%;border-collapse:collapse;margin-top:10px;background:white}
-th,td{border:1px solid #ccc;padding:6px;text-align:left}
-th{background:#2e7d32;color:white}
+body{font-family:Arial;padding:20px;background:#f4f6f9}
+h2{color:#2c3e50}
+input,select,button{padding:6px;margin:4px}
+button{background:#27ae60;color:white;border:none;cursor:pointer}
+button:hover{opacity:0.8}
+table{border-collapse:collapse;width:100%;background:white;margin-top:10px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th{background:#34495e;color:white}
+.box{background:white;padding:15px;margin-bottom:20px;border-radius:8px}
 </style>
 </head>
-
 <body>
 
-<h1>SISTEM GUDANG PT SAMUDRA MANDIRI SENTOSA</h1>
+<h2>SISTEM GUDANG PT SAMUDRA MANDIRI SENTOSA</h2>
 
-<h2>Master Barang</h2>
-<input type="text" id="kode" placeholder="Kode Barang">
-<input type="text" id="nama" placeholder="Nama Barang">
-<input type="text" id="foto" placeholder="Link Foto (optional)">
-<button onclick="tambahBarang()">Tambah Barang</button>
+<div class="box">
+<h3>Master Departemen</h3>
+<input type="text" id="deptNama" placeholder="Nama Departemen">
+<button onclick="tambahDepartemen()">Tambah Departemen</button>
+</div>
 
-<h2>Barang Masuk</h2>
-<input type="text" id="kodeMasuk" placeholder="Kode Barang">
-<input type="number" id="qtyMasuk" placeholder="Qty">
-<select id="departemen">
-<option value="">Pilih Departemen</option>
-<option>Produksi</option>
-<option>Gudang</option>
-<option>Tambak</option>
-<option>Office</option>
-</select>
-<label><input type="checkbox" id="stokCheck"> Masuk Stok</label>
-<button onclick="barangMasuk()">Proses</button>
+<div class="box">
+<h3>Master Barang</h3>
+<input type="text" id="kodeBarang" placeholder="Kode Barang">
+<input type="text" id="namaBarang" placeholder="Nama Barang">
+<input type="number" id="minStok" placeholder="Minimum Stok">
+<button onclick="tambahMasterBarang()">Tambah Barang</button>
+</div>
 
-<h2>Riwayat Transaksi</h2>
+<div class="box">
+<h3>Barang Masuk</h3>
+<select id="masukKode"></select>
+<input type="number" id="masukQty" placeholder="Qty">
+<label><input type="checkbox" id="masukStok"> Masuk Stok</label>
+<button onclick="barangMasuk()">Proses Masuk</button>
+</div>
+
+<div class="box">
+<h3>Barang Keluar</h3>
+<select id="keluarKode"></select>
+<input type="number" id="keluarQty" placeholder="Qty">
+<select id="keluarDepartemen"></select>
+<button onclick="barangKeluar()">Proses Keluar</button>
+</div>
+
+<div class="box">
+<h3>Stok Barang</h3>
+<table>
+<thead>
+<tr>
+<th>Kode</th>
+<th>Nama</th>
+<th>Stok</th>
+<th>Minimum</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="tabelStok"></tbody>
+</table>
+</div>
+
+<div class="box">
+<h3>Riwayat Transaksi</h3>
 <table>
 <thead>
 <tr>
 <th>Tanggal</th>
+<th>Tipe</th>
 <th>Kode</th>
-<th>Nama</th>
 <th>Qty</th>
 <th>Departemen</th>
-<th>Masuk Stok</th>
 </tr>
 </thead>
-<tbody id="riwayat"></tbody>
+<tbody id="tabelRiwayat"></tbody>
 </table>
+</div>
 
 <script>
 
+// FIREBASE CONFIG
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -72,133 +101,160 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-function tambahBarang(){
-var kode=document.getElementById("kode").value;
-var nama=document.getElementById("nama").value;
-var foto=document.getElementById("foto").value;
 
-if(kode==""||nama==""){alert("Lengkapi data");return;}
+// ================= MASTER DEPARTEMEN =================
 
-db.ref("masterBarang/"+kode).set({
-kode:kode,
+function tambahDepartemen(){
+let nama = document.getElementById("deptNama").value;
+if(!nama){alert("Isi nama");return;}
+db.ref("departemen").push({nama:nama});
+document.getElementById("deptNama").value="";
+}
+
+// ================= MASTER BARANG =================
+
+function tambahMasterBarang(){
+let kode = document.getElementById("kodeBarang").value;
+let nama = document.getElementById("namaBarang").value;
+let min = parseFloat(document.getElementById("minStok").value);
+
+if(!kode || !nama){alert("Lengkapi data");return;}
+
+db.ref("master_barang/"+kode).set({
 nama:nama,
-foto:foto||""
+min:min || 0
 });
 
-alert("Barang ditambahkan");
+db.ref("stok/"+kode).set({qty:0});
+
+document.getElementById("kodeBarang").value="";
+document.getElementById("namaBarang").value="";
+document.getElementById("minStok").value="";
 }
+
+// ================= LOAD SELECT =================
+
+db.ref("master_barang").on("value",function(snapshot){
+let masuk = document.getElementById("masukKode");
+let keluar = document.getElementById("keluarKode");
+masuk.innerHTML="";
+keluar.innerHTML="";
+snapshot.forEach(function(child){
+let data = child.val();
+masuk.innerHTML+=<option value="${child.key}">${child.key} - ${data.nama}</option>;
+keluar.innerHTML+=<option value="${child.key}">${child.key} - ${data.nama}</option>;
+});
+});
+
+db.ref("departemen").on("value",function(snapshot){
+let keluarDept=document.getElementById("keluarDepartemen");
+keluarDept.innerHTML="";
+snapshot.forEach(function(child){
+keluarDept.innerHTML+=<option value="${child.val().nama}">${child.val().nama}</option>;
+});
+});
+
+// ================= BARANG MASUK =================
 
 function barangMasuk(){
-var kode=document.getElementById("kodeMasuk").value;
-var qty=document.getElementById("qtyMasuk").value;
-var dept=document.getElementById("departemen").value;
-var stok=document.getElementById("stokCheck").checked;
+let kode=document.getElementById("masukKode").value;
+let qty=parseFloat(document.getElementById("masukQty").value);
+let masukStok=document.getElementById("masukStok").checked;
 
-if(kode==""||qty==""){alert("Lengkapi data");return;}
+if(!kode||!qty){alert("Lengkapi data");return;}
 
-db.ref("masterBarang/"+kode).once("value",function(snap){
-if(!snap.exists()){alert("Kode tidak ditemukan");return;}
+if(masukStok){
+let ref=db.ref("stok/"+kode);
+ref.once("value",function(snap){
+let lama=snap.val()?snap.val().qty:0;
+ref.set({qty:lama+qty});
+});
+}
 
-var data=snap.val();
-
-var transaksi={
+db.ref("riwayat").push({
 tanggal:new Date().toLocaleString(),
+tipe:"Masuk",
 kode:kode,
-nama:data.nama,
 qty:qty,
-departemen:dept,
-stok:stok?"Yes":"No"
-};
-
-db.ref("transaksi").push(transaksi);
-
-if(stok){
-db.ref("stok/"+kode).once("value",function(s){
-var lama=s.val()||0;
-db.ref("stok/"+kode).set(parseInt(lama)+parseInt(qty));
+departemen:"-"
 });
+
+document.getElementById("masukQty").value="";
 }
 
-alert("Transaksi berhasil");
-});
-}
-
-db.ref("transaksi").on("value",function(snapshot){
-var html="";
-snapshot.forEach(function(child){
-var d=child.val();
-html+="<tr>";
-html+="<td>"+d.tanggal+"</td>";
-html+="<td>"+d.kode+"</td>";
-html+="<td>"+d.nama+"</td>";
-html+="<td>"+d.qty+"</td>";
-html+="<td>"+d.departemen+"</td>";
-html+="<td>"+d.stok+"</td>";
-html+="</tr>";
-});
-document.getElementById("riwayat").innerHTML=html;
-});
-// LOAD MASTER BARANG KE SELECT KELUAR
-firebase.database().ref("master_barang").on("value", function(snapshot){
-    const select = document.getElementById("keluarKode");
-    select.innerHTML = "";
-    snapshot.forEach(function(child){
-        const data = child.val();
-        select.innerHTML += <option value="${child.key}">${child.key} - ${data.nama}</option>;
-    });
-});
-
-// LOAD DEPARTEMEN
-firebase.database().ref("departemen").on("value", function(snapshot){
-    const select = document.getElementById("keluarDepartemen");
-    select.innerHTML = "";
-    snapshot.forEach(function(child){
-        select.innerHTML += <option value="${child.val().nama}">${child.val().nama}</option>;
-    });
-});
+// ================= BARANG KELUAR =================
 
 function barangKeluar(){
+let kode=document.getElementById("keluarKode").value;
+let qty=parseFloat(document.getElementById("keluarQty").value);
+let dept=document.getElementById("keluarDepartemen").value;
 
-    const kode = document.getElementById("keluarKode").value;
-    const qty = parseFloat(document.getElementById("keluarQty").value);
-    const departemen = document.getElementById("keluarDepartemen").value;
+if(!kode||!qty){alert("Lengkapi data");return;}
 
-    if(!kode || !qty){
-        alert("Lengkapi data");
-        return;
-    }
+let ref=db.ref("stok/"+kode);
 
-    const stokRef = firebase.database().ref("stok/" + kode);
+ref.once("value",function(snap){
+let stok=snap.val()?snap.val().qty:0;
+if(stok<qty){alert("Stok tidak cukup");return;}
 
-    stokRef.once("value", function(snapshot){
+ref.set({qty:stok-qty});
 
-        const stokSekarang = snapshot.val() ? snapshot.val().qty : 0;
+db.ref("riwayat").push({
+tanggal:new Date().toLocaleString(),
+tipe:"Keluar",
+kode:kode,
+qty:qty,
+departemen:dept
+});
 
-        if(stokSekarang < qty){
-            alert("Stok tidak cukup!");
-            return;
-        }
-
-        const stokBaru = stokSekarang - qty;
-
-        // Update stok
-        stokRef.set({
-            qty: stokBaru
-        });
-
-        // Simpan riwayat
-        firebase.database().ref("riwayat").push({
-            tanggal: new Date().toLocaleString(),
-            kode: kode,
-            qty: qty,
-            tipe: "Keluar",
-            departemen: departemen
-        });
-
-        alert("Barang keluar berhasil");
-        document.getElementById("keluarQty").value = "";
-    });
+document.getElementById("keluarQty").value="";
+});
 }
+
+// ================= TAMPIL STOK =================
+
+db.ref("master_barang").on("value",function(snapshot){
+let tbody=document.getElementById("tabelStok");
+tbody.innerHTML="";
+snapshot.forEach(function(child){
+let kode=child.key;
+let data=child.val();
+db.ref("stok/"+kode).once("value",function(snap){
+let qty=snap.val()?snap.val().qty:0;
+let status=qty<=data.min?"⚠️ Minimum":"Aman";
+tbody.innerHTML+=`
+<tr>
+<td>${kode}</td>
+<td>${data.nama}</td>
+<td>${qty}</td>
+<td>${data.min}</td>
+<td>${status}</td>
+</tr>`;
+});
+});
+});
+
+// ================= TAMPIL RIWAYAT =================
+
+db.ref("riwayat").limitToLast(50).on("value",function(snapshot){
+let tbody=document.getElementById("tabelRiwayat");
+tbody.innerHTML="";
+let data=[];
+snapshot.forEach(function(child){
+data.push(child.val());
+});
+data.reverse().forEach(function(item){
+tbody.innerHTML+=`
+<tr>
+<td>${item.tanggal}</td>
+<td>${item.tipe}</td>
+<td>${item.kode}</td>
+<td>${item.qty}</td>
+<td>${item.departemen}</td>
+</tr>`;
+});
+});
+
 </script>
 
 </body>
