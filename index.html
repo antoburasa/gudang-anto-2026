@@ -2,92 +2,48 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>SISTEM GUDANG PT SAMUDRA MANDIRI SENTOSA</title>
+<title>Sistem Gudang SMS</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
-body{font-family:Arial;padding:20px;background:#f4f6f9}
-h2{color:#2c3e50}
-input,select,button{padding:6px;margin:4px}
-button{background:#27ae60;color:white;border:none;cursor:pointer}
-button:hover{opacity:0.8}
-table{border-collapse:collapse;width:100%;background:white;margin-top:10px}
-th,td{border:1px solid #ddd;padding:6px;text-align:center}
-th{background:#34495e;color:white}
-.box{background:white;padding:15px;margin-bottom:20px;border-radius:8px}
+body{font-family:Arial;padding:20px}
+input,button{padding:5px;margin:5px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #ccc;padding:5px;text-align:center}
+th{background:#2e7d32;color:white}
 </style>
 </head>
 <body>
 
-<h2>SISTEM GUDANG PT SAMUDRA MANDIRI SENTOSA</h2>
+<h2>Sistem Gudang PT SMS</h2>
 
-<div class="box">
-<h3>Master Departemen</h3>
-<input type="text" id="deptNama" placeholder="Nama Departemen">
-<button onclick="tambahDepartemen()">Tambah Departemen</button>
-</div>
-
-<div class="box">
 <h3>Master Barang</h3>
-<input type="text" id="kodeBarang" placeholder="Kode Barang">
-<input type="text" id="namaBarang" placeholder="Nama Barang">
-<input type="number" id="minStok" placeholder="Minimum Stok">
-<button onclick="tambahMasterBarang()">Tambah Barang</button>
-</div>
+<input id="kode" placeholder="Kode">
+<input id="nama" placeholder="Nama">
+<button onclick="tambah()">Tambah</button>
 
-<div class="box">
 <h3>Barang Masuk</h3>
-<select id="masukKode"></select>
-<input type="number" id="masukQty" placeholder="Qty">
-<label><input type="checkbox" id="masukStok"> Masuk Stok</label>
-<button onclick="barangMasuk()">Proses Masuk</button>
-</div>
+<input id="kodeMasuk" placeholder="Kode">
+<input id="qtyMasuk" type="number" placeholder="Qty">
+<button onclick="masuk()">Masuk</button>
 
-<div class="box">
 <h3>Barang Keluar</h3>
-<select id="keluarKode"></select>
-<input type="number" id="keluarQty" placeholder="Qty">
-<select id="keluarDepartemen"></select>
-<button onclick="barangKeluar()">Proses Keluar</button>
-</div>
+<input id="kodeKeluar" placeholder="Kode">
+<input id="qtyKeluar" type="number" placeholder="Qty">
+<button onclick="keluar()">Keluar</button>
 
-<div class="box">
-<h3>Stok Barang</h3>
+<h3>Stok</h3>
 <table>
 <thead>
-<tr>
-<th>Kode</th>
-<th>Nama</th>
-<th>Stok</th>
-<th>Minimum</th>
-<th>Status</th>
-</tr>
+<tr><th>Kode</th><th>Stok</th></tr>
 </thead>
-<tbody id="tabelStok"></tbody>
+<tbody id="stokTable"></tbody>
 </table>
-</div>
-
-<div class="box">
-<h3>Riwayat Transaksi</h3>
-<table>
-<thead>
-<tr>
-<th>Tanggal</th>
-<th>Tipe</th>
-<th>Kode</th>
-<th>Qty</th>
-<th>Departemen</th>
-</tr>
-</thead>
-<tbody id="tabelRiwayat"></tbody>
-</table>
-</div>
 
 <script>
 
-// FIREBASE CONFIG
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -101,158 +57,44 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-
-// ================= MASTER DEPARTEMEN =================
-
-function tambahDepartemen(){
-let nama = document.getElementById("deptNama").value;
-if(!nama){alert("Isi nama");return;}
-db.ref("departemen").push({nama:nama});
-document.getElementById("deptNama").value="";
+function tambah(){
+var k=document.getElementById("kode").value;
+var n=document.getElementById("nama").value;
+if(k==""||n==""){alert("Isi data");return;}
+db.ref("barang/"+k).set({nama:n});
+alert("Barang ditambah");
 }
 
-// ================= MASTER BARANG =================
-
-function tambahMasterBarang(){
-let kode = document.getElementById("kodeBarang").value;
-let nama = document.getElementById("namaBarang").value;
-let min = parseFloat(document.getElementById("minStok").value);
-
-if(!kode || !nama){alert("Lengkapi data");return;}
-
-db.ref("master_barang/"+kode).set({
-nama:nama,
-min:min || 0
+function masuk(){
+var k=document.getElementById("kodeMasuk").value;
+var q=parseInt(document.getElementById("qtyMasuk").value);
+if(!k||!q){alert("Isi data");return;}
+db.ref("stok/"+k).once("value",function(s){
+var lama=s.val()||0;
+db.ref("stok/"+k).set(lama+q);
 });
-
-db.ref("stok/"+kode).set({qty:0});
-
-document.getElementById("kodeBarang").value="";
-document.getElementById("namaBarang").value="";
-document.getElementById("minStok").value="";
 }
 
-// ================= LOAD SELECT =================
+function keluar(){
+var k=document.getElementById("kodeKeluar").value;
+var q=parseInt(document.getElementById("qtyKeluar").value);
+if(!k||!q){alert("Isi data");return;}
+db.ref("stok/"+k).once("value",function(s){
+var lama=s.val()||0;
+if(lama<q){alert("Stok kurang");return;}
+db.ref("stok/"+k).set(lama-q);
+});
+}
 
-db.ref("master_barang").on("value",function(snapshot){
-let masuk = document.getElementById("masukKode");
-let keluar = document.getElementById("keluarKode");
-masuk.innerHTML="";
-keluar.innerHTML="";
+db.ref("stok").on("value",function(snapshot){
+var html="";
 snapshot.forEach(function(child){
-let data = child.val();
-masuk.innerHTML+=<option value="${child.key}">${child.key} - ${data.nama}</option>;
-keluar.innerHTML+=<option value="${child.key}">${child.key} - ${data.nama}</option>;
+html+="<tr>";
+html+="<td>"+child.key+"</td>";
+html+="<td>"+child.val()+"</td>";
+html+="</tr>";
 });
-});
-
-db.ref("departemen").on("value",function(snapshot){
-let keluarDept=document.getElementById("keluarDepartemen");
-keluarDept.innerHTML="";
-snapshot.forEach(function(child){
-keluarDept.innerHTML+=<option value="${child.val().nama}">${child.val().nama}</option>;
-});
-});
-
-// ================= BARANG MASUK =================
-
-function barangMasuk(){
-let kode=document.getElementById("masukKode").value;
-let qty=parseFloat(document.getElementById("masukQty").value);
-let masukStok=document.getElementById("masukStok").checked;
-
-if(!kode||!qty){alert("Lengkapi data");return;}
-
-if(masukStok){
-let ref=db.ref("stok/"+kode);
-ref.once("value",function(snap){
-let lama=snap.val()?snap.val().qty:0;
-ref.set({qty:lama+qty});
-});
-}
-
-db.ref("riwayat").push({
-tanggal:new Date().toLocaleString(),
-tipe:"Masuk",
-kode:kode,
-qty:qty,
-departemen:"-"
-});
-
-document.getElementById("masukQty").value="";
-}
-
-// ================= BARANG KELUAR =================
-
-function barangKeluar(){
-let kode=document.getElementById("keluarKode").value;
-let qty=parseFloat(document.getElementById("keluarQty").value);
-let dept=document.getElementById("keluarDepartemen").value;
-
-if(!kode||!qty){alert("Lengkapi data");return;}
-
-let ref=db.ref("stok/"+kode);
-
-ref.once("value",function(snap){
-let stok=snap.val()?snap.val().qty:0;
-if(stok<qty){alert("Stok tidak cukup");return;}
-
-ref.set({qty:stok-qty});
-
-db.ref("riwayat").push({
-tanggal:new Date().toLocaleString(),
-tipe:"Keluar",
-kode:kode,
-qty:qty,
-departemen:dept
-});
-
-document.getElementById("keluarQty").value="";
-});
-}
-
-// ================= TAMPIL STOK =================
-
-db.ref("master_barang").on("value",function(snapshot){
-let tbody=document.getElementById("tabelStok");
-tbody.innerHTML="";
-snapshot.forEach(function(child){
-let kode=child.key;
-let data=child.val();
-db.ref("stok/"+kode).once("value",function(snap){
-let qty=snap.val()?snap.val().qty:0;
-let status=qty<=data.min?"⚠️ Minimum":"Aman";
-tbody.innerHTML+=`
-<tr>
-<td>${kode}</td>
-<td>${data.nama}</td>
-<td>${qty}</td>
-<td>${data.min}</td>
-<td>${status}</td>
-</tr>`;
-});
-});
-});
-
-// ================= TAMPIL RIWAYAT =================
-
-db.ref("riwayat").limitToLast(50).on("value",function(snapshot){
-let tbody=document.getElementById("tabelRiwayat");
-tbody.innerHTML="";
-let data=[];
-snapshot.forEach(function(child){
-data.push(child.val());
-});
-data.reverse().forEach(function(item){
-tbody.innerHTML+=`
-<tr>
-<td>${item.tanggal}</td>
-<td>${item.tipe}</td>
-<td>${item.kode}</td>
-<td>${item.qty}</td>
-<td>${item.departemen}</td>
-</tr>`;
-});
+document.getElementById("stokTable").innerHTML=html;
 });
 
 </script>
