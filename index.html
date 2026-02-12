@@ -138,7 +138,67 @@ html+="</tr>";
 });
 document.getElementById("riwayat").innerHTML=html;
 });
+// LOAD MASTER BARANG KE SELECT KELUAR
+firebase.database().ref("master_barang").on("value", function(snapshot){
+    const select = document.getElementById("keluarKode");
+    select.innerHTML = "";
+    snapshot.forEach(function(child){
+        const data = child.val();
+        select.innerHTML += <option value="${child.key}">${child.key} - ${data.nama}</option>;
+    });
+});
 
+// LOAD DEPARTEMEN
+firebase.database().ref("departemen").on("value", function(snapshot){
+    const select = document.getElementById("keluarDepartemen");
+    select.innerHTML = "";
+    snapshot.forEach(function(child){
+        select.innerHTML += <option value="${child.val().nama}">${child.val().nama}</option>;
+    });
+});
+
+function barangKeluar(){
+
+    const kode = document.getElementById("keluarKode").value;
+    const qty = parseFloat(document.getElementById("keluarQty").value);
+    const departemen = document.getElementById("keluarDepartemen").value;
+
+    if(!kode || !qty){
+        alert("Lengkapi data");
+        return;
+    }
+
+    const stokRef = firebase.database().ref("stok/" + kode);
+
+    stokRef.once("value", function(snapshot){
+
+        const stokSekarang = snapshot.val() ? snapshot.val().qty : 0;
+
+        if(stokSekarang < qty){
+            alert("Stok tidak cukup!");
+            return;
+        }
+
+        const stokBaru = stokSekarang - qty;
+
+        // Update stok
+        stokRef.set({
+            qty: stokBaru
+        });
+
+        // Simpan riwayat
+        firebase.database().ref("riwayat").push({
+            tanggal: new Date().toLocaleString(),
+            kode: kode,
+            qty: qty,
+            tipe: "Keluar",
+            departemen: departemen
+        });
+
+        alert("Barang keluar berhasil");
+        document.getElementById("keluarQty").value = "";
+    });
+}
 </script>
 
 </body>
