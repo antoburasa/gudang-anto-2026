@@ -50,6 +50,7 @@ th{background:#34495e;color:white}
 <thead>
 <tr>
 <th>Kode</th>
+<th>Nama</th>
 <th>Stok</th>
 </tr>
 </thead>
@@ -65,6 +66,7 @@ th{background:#34495e;color:white}
 <th>Tanggal</th>
 <th>Tipe</th>
 <th>Kode</th>
+<th>Nama</th>
 <th>Qty</th>
 </tr>
 </thead>
@@ -155,18 +157,36 @@ document.getElementById("qtyKeluar").value="";
 
 // ================= TAMPIL STOK =================
 db.ref("stok").on("value",function(snapshot){
+
 var html="";
+
 snapshot.forEach(function(child){
+
+var kode = child.key;
+var qty = child.val();
+
+db.ref("barang/"+kode).once("value",function(b){
+
+var nama = "-";
+if(b.val()){ nama = b.val().nama; }
+
 html+="<tr>";
-html+="<td>"+child.key+"</td>";
-html+="<td>"+child.val()+"</td>";
+html+="<td>"+kode+"</td>";
+html+="<td>"+nama+"</td>";
+html+="<td>"+qty+"</td>";
 html+="</tr>";
-});
+
 document.getElementById("stokTable").innerHTML=html;
+
+});
+
+});
+
 });
 
 // ================= TAMPIL RIWAYAT =================
 db.ref("riwayat").limitToLast(100).on("value",function(snapshot){
+
 var html="";
 var data=[];
 
@@ -177,15 +197,30 @@ data.push(child.val());
 data.reverse();
 
 for(var i=0;i<data.length;i++){
+
+(function(item){
+
+db.ref("barang/"+item.kode).once("value",function(b){
+
+var nama="-";
+if(b.val()){ nama=b.val().nama; }
+
 html+="<tr>";
-html+="<td>"+data[i].tanggal+"</td>";
-html+="<td>"+data[i].tipe+"</td>";
-html+="<td>"+data[i].kode+"</td>";
-html+="<td>"+data[i].qty+"</td>";
+html+="<td>"+item.tanggal+"</td>";
+html+="<td>"+item.tipe+"</td>";
+html+="<td>"+item.kode+"</td>";
+html+="<td>"+nama+"</td>";
+html+="<td>"+item.qty+"</td>";
 html+="</tr>";
-}
 
 document.getElementById("riwayatTable").innerHTML=html;
+
+});
+
+})(data[i]);
+
+}
+
 });
 
 </script>
