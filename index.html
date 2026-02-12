@@ -2,48 +2,79 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistem Gudang SMS</title>
+<title>Sistem Gudang PT Samudra Mandiri Sentosa</title>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <style>
-body{font-family:Arial;padding:20px}
-input,button{padding:5px;margin:5px}
-table{border-collapse:collapse;width:100%}
-th,td{border:1px solid #ccc;padding:5px;text-align:center}
-th{background:#2e7d32;color:white}
+body{font-family:Arial;padding:20px;background:#f4f6f9}
+h2{color:#2c3e50}
+input,button{padding:6px;margin:4px}
+button{background:#27ae60;color:white;border:none;cursor:pointer}
+button:hover{opacity:0.8}
+table{border-collapse:collapse;width:100%;background:white;margin-top:10px}
+th,td{border:1px solid #ccc;padding:6px;text-align:center}
+th{background:#34495e;color:white}
+.box{background:white;padding:15px;margin-bottom:20px;border-radius:6px}
 </style>
 </head>
 <body>
 
-<h2>Sistem Gudang PT SMS</h2>
+<h2>SISTEM GUDANG PT SAMUDRA MANDIRI SENTOSA</h2>
 
+<div class="box">
 <h3>Master Barang</h3>
-<input id="kode" placeholder="Kode">
-<input id="nama" placeholder="Nama">
-<button onclick="tambah()">Tambah</button>
+<input id="kode" placeholder="Kode Barang">
+<input id="nama" placeholder="Nama Barang">
+<button onclick="tambah()">Tambah Barang</button>
+</div>
 
+<div class="box">
 <h3>Barang Masuk</h3>
 <input id="kodeMasuk" placeholder="Kode">
 <input id="qtyMasuk" type="number" placeholder="Qty">
-<button onclick="masuk()">Masuk</button>
+<button onclick="masuk()">Proses Masuk</button>
+</div>
 
+<div class="box">
 <h3>Barang Keluar</h3>
 <input id="kodeKeluar" placeholder="Kode">
 <input id="qtyKeluar" type="number" placeholder="Qty">
-<button onclick="keluar()">Keluar</button>
+<button onclick="keluar()">Proses Keluar</button>
+</div>
 
-<h3>Stok</h3>
+<div class="box">
+<h3>Stok Barang</h3>
 <table>
 <thead>
-<tr><th>Kode</th><th>Stok</th></tr>
+<tr>
+<th>Kode</th>
+<th>Stok</th>
+</tr>
 </thead>
 <tbody id="stokTable"></tbody>
 </table>
+</div>
+
+<div class="box">
+<h3>Riwayat Transaksi</h3>
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Tipe</th>
+<th>Kode</th>
+<th>Qty</th>
+</tr>
+</thead>
+<tbody id="riwayatTable"></tbody>
+</table>
+</div>
 
 <script>
 
+// ================= FIREBASE CONFIG =================
 var firebaseConfig = {
  apiKey: "AIzaSyAucO3yaRtvL-v9zCK_6-ThNJVT-kRF3jg",
     authDomain: "gudang-anto-2026.firebaseapp.com",
@@ -57,35 +88,72 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+// ================= MASTER BARANG =================
 function tambah(){
 var k=document.getElementById("kode").value;
 var n=document.getElementById("nama").value;
+
 if(k==""||n==""){alert("Isi data");return;}
+
 db.ref("barang/"+k).set({nama:n});
-alert("Barang ditambah");
+db.ref("stok/"+k).set(0);
+
+document.getElementById("kode").value="";
+document.getElementById("nama").value="";
+alert("Barang ditambahkan");
 }
 
+// ================= BARANG MASUK =================
 function masuk(){
 var k=document.getElementById("kodeMasuk").value;
 var q=parseInt(document.getElementById("qtyMasuk").value);
+
 if(!k||!q){alert("Isi data");return;}
+
 db.ref("stok/"+k).once("value",function(s){
 var lama=s.val()||0;
 db.ref("stok/"+k).set(lama+q);
+
+db.ref("riwayat").push({
+tanggal:new Date().toLocaleString(),
+tipe:"Masuk",
+kode:k,
+qty:q
 });
+});
+
+document.getElementById("qtyMasuk").value="";
 }
 
+// ================= BARANG KELUAR =================
 function keluar(){
 var k=document.getElementById("kodeKeluar").value;
 var q=parseInt(document.getElementById("qtyKeluar").value);
+
 if(!k||!q){alert("Isi data");return;}
+
 db.ref("stok/"+k).once("value",function(s){
 var lama=s.val()||0;
-if(lama<q){alert("Stok kurang");return;}
-db.ref("stok/"+k).set(lama-q);
-});
+
+if(lama<q){
+alert("Stok tidak cukup");
+return;
 }
 
+db.ref("stok/"+k).set(lama-q);
+
+db.ref("riwayat").push({
+tanggal:new Date().toLocaleString(),
+tipe:"Keluar",
+kode:k,
+qty:q
+});
+});
+
+document.getElementById("qtyKeluar").value="";
+}
+
+// ================= TAMPIL STOK =================
 db.ref("stok").on("value",function(snapshot){
 var html="";
 snapshot.forEach(function(child){
@@ -95,6 +163,29 @@ html+="<td>"+child.val()+"</td>";
 html+="</tr>";
 });
 document.getElementById("stokTable").innerHTML=html;
+});
+
+// ================= TAMPIL RIWAYAT =================
+db.ref("riwayat").limitToLast(100).on("value",function(snapshot){
+var html="";
+var data=[];
+
+snapshot.forEach(function(child){
+data.push(child.val());
+});
+
+data.reverse();
+
+for(var i=0;i<data.length;i++){
+html+="<tr>";
+html+="<td>"+data[i].tanggal+"</td>";
+html+="<td>"+data[i].tipe+"</td>";
+html+="<td>"+data[i].kode+"</td>";
+html+="<td>"+data[i].qty+"</td>";
+html+="</tr>";
+}
+
+document.getElementById("riwayatTable").innerHTML=html;
 });
 
 </script>
